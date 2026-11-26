@@ -39,16 +39,64 @@ export async function prepare(py, code) {
   return { ok: true };
 }
 
-/** Menjalankan kode di namespace baru (setup lebih dulu). Hasil: { ok, stdout, stderr, error? }. */
+// Dijalankan sebelum setiap run supaya tidak ada keadaan yang terbawa dari run sebelumnya:
+// - modul buatan pengguna di /kerja dibuang dari sys.modules (kalau tidak, versi lamanya yang dipakai,
+//   misalnya berkas tes pytest yang sudah diubah tetap menjalankan isi lama);
+// - pengaturan logging dikembalikan ke awal (basicConfig di run sebelumnya membuat basicConfig berikutnya diam);
+// - _dojo_run menangkap SystemExit (sys.exit) supaya tidak mematikan mesin; kodenya dikembalikan sebagai exitCode.
+const RESET_STATE = `
+import sys as _s, logging as _lg
+for _k, _m in list(_s.modules.items()):
+    _f = getattr(_m, "__file__", None) or ""
+    if str(_f).startswith("/kerja"):
+        _s.modules.pop(_k, None)
+_root = _lg.getLogger()
+for _h in _root.handlers[:]:
+    _root.removeHandler(_h)
+    try: _h.close()
+    except Exception: pass
+_root.setLevel(_lg.WARNING)
+for _lgr in list(_lg.Logger.manager.loggerDict.values()):
+    if isinstance(_lgr, _lg.Logger):
+        for _h in _lgr.handlers[:]:
+            _lgr.removeHandler(_h)
+        _lgr.setLevel(_lg.NOTSET)
+        _lgr.propagate = True
+if "/kerja" not in _s.path:
+    _s.path.insert(0, "/kerja")
+if "_dojo_run" not in globals():
+    from pyodide.code import eval_code_async as _eca
+    async def _dojo_run(code, ns):
+        try:
+            await _eca(code, ns)
+            return None
+        except SystemExit as e:
+            return e.code if e.code is not None else 0
+del _k, _m, _f, _root, _lgr
+`;
+
+/** Menjalankan kode di namespace baru (setup lebih dulu). Hasil: { ok, stdout, stderr, exitCode?, error? }. */
 export async function runCode(py, code, setup = "") {
   let out = "", err = "";
+  // folder kerja dikosongkan setiap run, seperti namespace: berkas dari soal atau solusi sebelumnya
+  // tidak boleh terbawa (kalau terbawa, jawaban yang salah bisa terlihat benar)
+  py.runPython("import os, shutil; os.chdir('/'); shutil.rmtree('/kerja', ignore_errors=True); os.makedirs('/kerja'); os.chdir('/kerja')");
+  py.runPython(RESET_STATE);
   const ns = py.globals.get("dict")();
+  // kode dijalankan seperti skrip: __name__ == "__main__"
+  ns.set("__name__", "__main__");
   try {
     py.setStdout({ batched: (s) => { out += s + "\n"; } });
     py.setStderr({ batched: (s) => { err += s + "\n"; } });
-    if (setup) await py.runPythonAsync(setup, { globals: ns });
-    await py.runPythonAsync(code, { globals: ns });
-    return { ok: true, stdout: out, stderr: err };
+    const runner = py.globals.get("_dojo_run");
+    let exitCode = null;
+    try {
+      if (setup) exitCode = await runner(setup, ns);
+      if (exitCode === undefined || exitCode === null) exitCode = await runner(code, ns);
+    } finally { runner.destroy(); }
+    const r = { ok: true, stdout: out, stderr: err };
+    if (exitCode !== undefined && exitCode !== null) r.exitCode = exitCode;
+    return r;
   } catch (e) {
     // pesan error Python: baris terakhir traceback sebagai ringkasan
     const message = String(e && e.message || e);

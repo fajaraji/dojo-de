@@ -86,7 +86,7 @@ async function runPyInto(key, code, setup = "") {
   fb.innerHTML = '<div class="fb info">Menjalankan Python…</div>'; out.innerHTML = "";
   const r = await pyEngine.run(code, { setup });
   if (!r.ok) { fb.innerHTML = pyErrorHtml(r); if (r.stdout && r.stdout.trim()) out.innerHTML = stdoutHtml(r); return r; }
-  fb.innerHTML = `<p class="meta">Selesai dalam ${r.ms} ms.</p>`;
+  fb.innerHTML = `<p class="meta">Selesai dalam ${r.ms} ms.${r.exitCode !== undefined ? ` Program berhenti lewat sys.exit dengan kode keluar ${esc(String(r.exitCode))}${String(r.exitCode) === "0" ? " (berhasil)" : " (selain 0 berarti gagal)"}.` : ""}</p>`;
   out.innerHTML = stdoutHtml(r);
   return r;
 }

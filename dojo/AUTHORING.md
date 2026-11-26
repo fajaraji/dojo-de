@@ -56,7 +56,7 @@ Rencana: `D:\de-practice\docs\superpowers\plans\2026-11-26-dojo-bagian-3-8.md` (
   - `{ lang: "file", filename, code, note }`: ISI BERKAS (Dockerfile, compose.yaml, .env, skrip) yang disimpan pengguna di laptop; tampil dengan nama berkas dan tombol "Salin isi berkas".
   - `{ lang: "shell", code, note }`: perintah untuk laptop pengguna, hanya ditampilkan dengan tombol salin. Tulis untuk **PowerShell di Windows 11**. Padanan bash/Linux boleh disebut di teks.
   - Tanpa `lang`: SQL seperti sebelumnya (`sql`).
-- **Data di Python:** TokoKita tersedia sebagai CSV di `/data/app/<tabel>.csv` dan `/data/raw/<tabel>.csv`, isinya sama dengan database SQL. Folder kerja yang boleh ditulisi adalah `/kerja`. Uji dengan `node tools/check-content.mjs --lesson <id>` (menjalankan Python di Node). Untuk mencoba cepat, buat skrip Node kecil yang memakai `app/py-core.js` (lihat fungsi `runPy` di `tools/check-content.mjs`).
+- **Data di Python:** TokoKita tersedia sebagai CSV di `/data/app/<tabel>.csv` dan `/data/raw/<tabel>.csv`, isinya sama dengan database SQL. Folder kerja yang boleh ditulisi adalah `/kerja`; folder ini DIKOSONGKAN setiap kali kode dijalankan, jadi setiap contoh/soal harus membuat sendiri berkas yang dibutuhkannya (di kode atau `setup`). Uji dengan `node tools/check-content.mjs --lesson <id>` (menjalankan Python di Node). Untuk mencoba cepat, buat skrip Node kecil yang memakai `app/py-core.js` (lihat fungsi `runPy` di `tools/check-content.mjs`).
 - **Soal `py`:** `{ kind: "py", prompt, start?, solution, setup?, check?, why, hint }`.
   - Penilaian membandingkan keluaran `print` jawaban dengan solusi. Spasi di akhir baris diabaikan.
   - Prompt WAJIB menyebut persis apa yang dicetak, termasuk format dan urutannya.
