@@ -12,7 +12,7 @@ export default {
     "Membuat deret angka dan tanggal dengan <code>generate_series</code>, lalu menampilkan tanggal tanpa data sebagai 0.",
   ],
   terms: [
-    { term: "cte", def: "<i>Common Table Expression</i> (ungkapan tabel bersama): hasil sebuah query yang diberi nama di bagian <code>WITH</code>, lalu dipakai seperti tabel oleh query yang sama. Nama itu hanya berlaku sampai query tersebut selesai." },
+    { term: "CTE", def: "<i>Common Table Expression</i> (ungkapan tabel bersama): hasil sebuah query yang diberi nama di bagian <code>WITH</code>, lalu dipakai seperti tabel oleh query yang sama. Nama itu hanya berlaku sampai query tersebut selesai." },
     { term: "cte berantai", def: "Beberapa CTE di dalam satu <code>WITH</code>, dipisah koma, ketika CTE yang ditulis belakangan memakai CTE yang ditulis sebelumnya." },
     { term: "hirarki", def: "Susunan bertingkat antara induk dan anak, misalnya kategori dan subkategori, atau atasan dan bawahan. Di tabel biasanya disimpan sebagai kolom yang merujuk ke tabel itu sendiri, seperti <code>parent_id</code> atau <code>manager_id</code>." },
     { term: "akar dan daun", def: "Di sebuah hirarki, akar adalah baris paling atas yang tidak punya induk; daun adalah baris paling bawah yang tidak punya anak." },
