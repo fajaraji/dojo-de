@@ -9,9 +9,13 @@ function exampleHtml(ex, key) {
 ${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div><div class="out" id="out-${key}"></div></div>`;
 }
 
-function drillHtml(d, n, state) {
+function drillHtml(d, n, state, exam) {
   const done = state.progress[d.id];
   const tries = state.tries[d.id] || 0;
+  // di bab ujian, petunjuk baru aktif setelah 2 kali cek (seperti tombol solusi)
+  const hintBtn = exam
+    ? `<button data-act="hint" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Petunjuk</button>`
+    : `<button data-act="hint" data-id="${d.id}">Petunjuk</button>`;
   const head = `<div class="dh"><span class="tag">${n}. ${KIND[d.kind] || d.kind}</span>${d.level === "wawancara" ? '<span class="tag hot">Level wawancara</span>' : ""}${done ? '<span class="tag ok">Selesai</span>' : ""}</div>
 <div class="dq">${d.prompt}</div>`;
   let body = "";
@@ -20,11 +24,11 @@ function drillHtml(d, n, state) {
     body = `<label class="kbd" for="ed-${d.id}">Editor (Ctrl+Enter untuk menjalankan)</label>
 <textarea class="ed" id="ed-${d.id}" data-run="${d.id}" data-draft="${d.id}" spellcheck="false">${esc(value)}</textarea>
 <div class="row"><button class="pri" data-act="check" data-id="${d.id}">Cek jawaban</button><button data-act="run" data-target="${d.id}">Jalankan saja</button>
-<button data-act="hint" data-id="${d.id}">Petunjuk</button><button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat solusi</button>
+${hintBtn}<button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat solusi</button>
 ${d.start ? `<button data-act="reset" data-id="${d.id}">Kembalikan kode awal</button>` : ""}</div>`;
   } else if (d.kind === "number") {
     body = `<div class="row"><label class="kbd" for="num-${d.id}">Jawabanmu</label><input class="numin" id="num-${d.id}" inputmode="decimal" placeholder="contoh: 1250">
-<button class="pri" data-act="check" data-id="${d.id}">Cek</button><button data-act="hint" data-id="${d.id}">Petunjuk</button>
+<button class="pri" data-act="check" data-id="${d.id}">Cek</button>${hintBtn}
 <button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat cara</button></div>
 <p class="kbd">Hitung dengan query di Ruang coba SQL, lalu tulis angkanya di sini.</p>`;
   } else if (d.kind === "choice") {
@@ -32,9 +36,16 @@ ${d.start ? `<button data-act="reset" data-id="${d.id}">Kembalikan kode awal</bu
   } else if (d.kind === "explain") {
     body = `<label class="kbd" for="note-${d.id}">Tulis jawabanmu dulu (tersimpan di browser ini)</label>
 <textarea class="note" id="note-${d.id}" data-draft="${d.id}">${esc(state.drafts[d.id] || "")}</textarea>
-<div class="row"><button class="pri" data-act="explain" data-id="${d.id}">Bandingkan dengan jawaban contoh</button><button data-act="hint" data-id="${d.id}">Petunjuk</button></div>`;
+<div class="row"><button class="pri" data-act="explain" data-id="${d.id}">Bandingkan dengan jawaban contoh</button>${hintBtn}</div>`;
   }
   return `<section class="box drill${done ? " done" : ""}" id="d-${d.id}">${head}${body}<div id="fb-${d.id}"></div><div class="out" id="out-${d.id}"></div></section>`;
+}
+
+// Penghitung waktu bab ujian (L.exam = { minutes }). Jam diperbarui oleh main.js.
+function examHtml(L) {
+  return `<div class="callout exam"><b class="lab">Waktu ujian: ${L.exam.minutes} menit</b>
+<p>Mulai penghitung waktu, lalu kerjakan semua soal tanpa membuka bab lain. Petunjuk dan solusi baru aktif setelah dua kali cek.</p>
+<div class="row"><span class="clock" id="exam-clock">${L.exam.minutes}:00</span><button class="pri" data-act="exam-start" data-id="${L.id}">Mulai</button><button data-act="exam-reset" data-id="${L.id}">Ulang dari awal</button></div></div>`;
 }
 
 export function lessonHtml(L, index, total, prev, next, state) {
@@ -47,6 +58,7 @@ ${L.terms && L.terms.length ? `<div class="callout"><b class="lab">Istilah di ba
 ${L.tsql && L.tsql.length ? `<h2>Di SQL Server (T-SQL)</h2><div class="tw"><table class="t"><tr><th>PostgreSQL</th><th>SQL Server</th><th>Catatan</th></tr>${L.tsql.map(t => `<tr><td><code>${esc(t.pg)}</code></td><td><code>${esc(t.tsql)}</code></td><td>${t.note}</td></tr>`).join("")}</table></div>` : ""}
 <h2>Ringkasan</h2><ul class="prose">${L.summary.map(s => `<li>${s}</li>`).join("")}</ul>
 <h2>Latihan</h2><p class="prose">Kerjakan berurutan. Tombol "Lihat solusi" baru aktif setelah dua kali cek. Kalau kamu membukanya, tutup lagi lalu ketik ulang jawabannya dari ingatan.</p>
-${L.drills.map((d, i) => drillHtml(d, i + 1, state)).join("")}
+${L.exam ? examHtml(L) : ""}
+${L.drills.map((d, i) => drillHtml(d, i + 1, state, !!L.exam)).join("")}
 <div class="pager">${prev ? `<a href="#${prev.id}">← ${esc(prev.title)}</a>` : '<a href="#mulai">← Mulai di sini</a>'}${next ? `<a href="#${next.id}">${esc(next.title)} →</a>` : "<span></span>"}</div>`;
 }

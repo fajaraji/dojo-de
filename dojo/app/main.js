@@ -19,10 +19,28 @@ const engine = createEngine({
 });
 engine.ready().catch(() => {});
 
-const state = { progress: load("progress", {}), tries: load("tries", {}), drafts: load("drafts", {}) };
+const state = { progress: load("progress", {}), tries: load("tries", {}), drafts: load("drafts", {}), exam: load("exam", {}) };
 let lessons = [];
 let current = "mulai";
 let draftTimer = null;
+let examTimer = null;
+
+/* ---------- penghitung waktu bab ujian ---------- */
+function tickExam() {
+  const clock = $("exam-clock");
+  const L = lessons.find(x => x.id === current);
+  if (!clock || !L || !L.exam) { clearInterval(examTimer); examTimer = null; return; }
+  const total = L.exam.minutes * 60, start = state.exam[L.id];
+  const left = start ? Math.max(0, total - Math.floor((Date.now() - start) / 1000)) : total;
+  const mm = Math.floor(left / 60), ss = String(left % 60).padStart(2, "0");
+  clock.textContent = start && left === 0 ? "Waktu habis" : `${mm}:${ss}`;
+  clock.classList.toggle("over", !!start && left === 0);
+}
+function startExamClock() {
+  clearInterval(examTimer);
+  tickExam();
+  examTimer = setInterval(tickExam, 1000);
+}
 
 /* ---------- tampilan hasil query ---------- */
 const DATE = 1082;
@@ -69,11 +87,11 @@ function markDone(id) {
   if (!state.progress[id]) { state.progress[id] = true; save("progress", state.progress); updateMeter(); renderRail(); }
   const box = $("d-" + id);
   if (box && !box.classList.contains("done")) { box.classList.add("done"); box.querySelector(".dh").insertAdjacentHTML("beforeend", '<span class="tag ok">Selesai</span>'); }
-  document.querySelectorAll(`[data-act="sol"][data-id="${id}"]`).forEach(b => { b.disabled = false; });
+  document.querySelectorAll(`[data-act="sol"][data-id="${id}"], [data-act="hint"][data-id="${id}"]`).forEach(b => { b.disabled = false; });
 }
 function bumpTry(id) {
   state.tries[id] = (state.tries[id] || 0) + 1; save("tries", state.tries);
-  if (state.tries[id] >= 2) document.querySelectorAll(`[data-act="sol"][data-id="${id}"]`).forEach(b => { b.disabled = false; });
+  if (state.tries[id] >= 2) document.querySelectorAll(`[data-act="sol"][data-id="${id}"], [data-act="hint"][data-id="${id}"]`).forEach(b => { b.disabled = false; });
 }
 const fbSet = (id, cls, html) => { const el = $("fb-" + id); if (el) el.innerHTML = `<div class="fb ${cls}">${html}</div>`; };
 
@@ -146,7 +164,7 @@ function show(id) {
   current = id || "mulai";
   const main = $("main");
   const i = lessons.findIndex(L => L.id === current);
-  if (i >= 0) main.innerHTML = lessonHtml(lessons[i], i, lessons.length, lessons[i - 1], lessons[i + 1], state);
+  if (i >= 0) { main.innerHTML = lessonHtml(lessons[i], i, lessons.length, lessons[i - 1], lessons[i + 1], state); if (lessons[i].exam) startExamClock(); }
   else if (current === "kamus") main.innerHTML = pageDictionary();
   else if (current === "coba") main.innerHTML = pagePlayground();
   else if (current === "uji") { main.innerHTML = pageSelfTest(); runSelfTest(); }
@@ -180,6 +198,12 @@ document.addEventListener("click", async (e) => {
     const L = lessons.find(x => x.id === current);
     const ex = L.sections[si].examples[ei];
     runInto(b.dataset.key, ex.sql, ex.setup || "");
+  } else if (act === "exam-start") {
+    if (!state.exam[id]) { state.exam[id] = Date.now(); save("exam", state.exam); }
+    startExamClock();
+  } else if (act === "exam-reset") {
+    delete state.exam[id]; save("exam", state.exam);
+    startExamClock();
   } else if (act === "check") {
     onCheck(findDrill(id));
   } else if (act === "hint") {

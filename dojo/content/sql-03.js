@@ -23,7 +23,7 @@ export default {
       title: "Kolom hasil hitungan",
       html: `<p>Isi SELECT tidak harus nama kolom. Kamu bisa menulis <b>ekspresi</b>, yaitu rumus yang dihitung untuk setiap baris. Operator hitung yang tersedia: <code>+</code> (tambah), <code>-</code> (kurang), <code>*</code> (kali), <code>/</code> (bagi), dan <code>%</code> (sisa bagi).</p>
 <p>Tabel <code>app.order_items</code> menyimpan isi setiap pesanan: jumlah barang (<code>qty</code>), harga satuan (<code>unit_price</code>), dan potongan harga dalam rupiah (<code>discount</code>). Nilai kotor satu baris adalah qty dikali harga satuan; nilai bersihnya nilai kotor dikurangi potongan.</p>
-<p>Urutan hitungnya sama dengan matematika di sekolah: kali, bagi, dan sisa bagi dikerjakan sebelum tambah dan kurang. <code>qty * unit_price - discount</code> berarti (qty kali harga) dikurangi potongan, sesuai maksud kita. Sebaliknya, <code>discount / qty * unit_price</code> berarti (potongan dibagi qty) dikali harga, yang hampir pasti bukan maksudmu. Kalau ragu, pakai tanda kurung. Tanda kurung tidak pernah salah dan membuat maksud rumus terlihat jelas bagi orang lain.</p>`,
+<p>Urutan hitungnya sama dengan matematika di sekolah: kali, bagi, dan sisa bagi dikerjakan sebelum tambah dan kurang. <code>qty * unit_price - discount</code> berarti (qty kali harga) dikurangi potongan, sesuai maksud kita. Sebaliknya, <code>discount / qty * unit_price</code> berarti (potongan dibagi qty) dikali harga, yang hampir pasti bukan maksudmu. Kalau ragu, pakai tanda kurung. Tanda kurung di sekitar bagian yang memang dihitung lebih dulu, misalnya <code>(qty * unit_price) - discount</code>, tidak mengubah hasil, dan membuat maksud rumus terlihat jelas bagi orang lain.</p>`,
       examples: [{ sql: "select order_id, line_no, qty, unit_price, discount,\n       qty * unit_price as nilai_kotor,\n       qty * unit_price - discount as nilai_bersih\nfrom app.order_items\nwhere order_id = 100001;", note: "Dua kolom terakhir tidak ada di tabel. Keduanya dihitung saat query berjalan. Beri alias supaya judul kolomnya jelas; tanpa alias, PostgreSQL memberi judul ?column?." }],
     },
     {
@@ -36,7 +36,7 @@ export default {
 <tr><td><code>date</code></td><td>tanggal</td><td><code>signup_date</code></td></tr>
 <tr><td><code>timestamp</code></td><td>tanggal dan jam</td><td><code>order_ts</code></td></tr>
 <tr><td><code>boolean</code></td><td>benar atau salah</td><td><code>is_active</code></td></tr></table></div>
-<p>Angka dalam <code>numeric(12,2)</code> berarti total 12 digit, 2 di antaranya di belakang koma. Untuk uang, selalu pakai <code>numeric</code>. Ada juga tipe angka perkiraan seperti <code>real</code> dan <code>double precision</code>; tipe ini bisa menghasilkan selisih kecil di digit belakang, sehingga tidak cocok untuk uang.</p>
+<p>Angka dalam <code>numeric(12,2)</code> berarti paling banyak 12 digit, 2 di antaranya di belakang koma. Untuk uang, selalu pakai <code>numeric</code>. Ada juga tipe angka perkiraan seperti <code>real</code> dan <code>double precision</code>; tipe ini bisa menghasilkan selisih kecil di digit belakang, sehingga tidak cocok untuk uang.</p>
 <p>Tipe setiap kolom TokoKita tercantum di <a href="#kamus">Kamus data</a>.</p>`,
     },
     {
@@ -72,10 +72,10 @@ export default {
 end</code></pre>
 <p>Database memeriksa syarat dari atas ke bawah, lalu berhenti di syarat pertama yang benar. Karena itu, urutan WHEN penting. Kalau tidak ada yang benar, hasilnya diambil dari ELSE. Kalau ELSE tidak ditulis, hasilnya NULL.</p>
 <p>Dua kesalahan yang paling sering terjadi:</p>
-<ul><li><b>Urutan WHEN terbalik.</b> Kalau <code>when list_price &lt; 200000 then 'sedang'</code> ditulis lebih dulu, produk seharga 30.000 juga berhenti di situ, sehingga label 'murah' tidak pernah muncul.</li>
+<ul><li><b>Urutan WHEN terbalik.</b> Kalau <code>when list_price &lt; 200000 then 'sedang'</code> ditulis lebih dulu, produk seharga 24.900 juga berhenti di situ, sehingga label 'murah' tidak pernah muncul.</li>
 <li><b>Lupa ELSE.</b> Nilai yang tidak masuk syarat mana pun menjadi NULL tanpa peringatan. Tulis ELSE, walaupun isinya hanya 'lainnya', supaya kasus yang terlewat langsung terlihat.</li></ul>
-<p>Semua hasil THEN dan ELSE harus bertipe sama. Mencampur teks di satu cabang dan angka di cabang lain membuat query gagal.</p>`,
-      examples: [{ sql: "select product_name, list_price,\n       case\n         when list_price < 50000 then 'murah'\n         when list_price < 200000 then 'sedang'\n         else 'mahal'\n       end as kelas_harga\nfrom app.products\norder by list_price\nlimit 15;", note: "Produk seharga 40.000 berhenti di WHEN pertama. Produk 150.000 gagal di WHEN pertama, lalu berhenti di WHEN kedua. Sisanya masuk ELSE." }],
+<p>Semua hasil THEN dan ELSE harus bisa dijadikan satu tipe yang sama. Bilangan bulat dan angka desimal boleh dicampur (hasilnya menjadi numeric), tapi teks seperti 'murah' di satu cabang dan angka di cabang lain membuat query gagal.</p>`,
+      examples: [{ sql: "select product_name, list_price,\n       case\n         when list_price < 50000 then 'murah'\n         when list_price < 200000 then 'sedang'\n         else 'mahal'\n       end as kelas_harga\nfrom app.products\norder by list_price\nlimit 15;", note: "Lima belas produk termurah ini semuanya di bawah 50.000 (yang paling mahal 37.900), jadi semuanya berhenti di WHEN pertama dan berlabel 'murah'. Hapus baris limit 15 untuk melihat label lain: produk seharga 137.900 gagal di WHEN pertama lalu berhenti di WHEN kedua ('sedang'), dan produk seharga 200.000 ke atas masuk ELSE ('mahal')." }],
     },
     {
       title: "NULL di dalam hitungan, dan COALESCE",
@@ -87,7 +87,7 @@ end</code></pre>
     {
       title: "NULLIF: mengubah nilai tertentu menjadi NULL",
       html: `<p><code>NULLIF(a, b)</code> kebalikan dari COALESCE: hasilnya NULL kalau a sama dengan b, dan a kalau tidak sama. Kegunaan utamanya mencegah pembagian dengan nol. Membagi dengan 0 membuat query gagal; membagi dengan NULL menghasilkan NULL, sehingga query tetap berjalan.</p>
-<p>Contohnya, ongkos kirim bisa 0 kalau pelanggan memakai voucher gratis ongkir. Contoh di bawah membagi angka 100.000 dengan ongkos kirim setiap pesanan. Untuk pesanan dengan ongkir 0, pembagian biasa akan gagal. Dengan <code>NULLIF(shipping_fee, 0)</code> sebagai pembagi, hasilnya NULL dan query tetap berjalan.</p>`,
+<p>Contohnya, ongkos kirim bisa 0. Di data TokoKita ada 772 pesanan dengan ongkir 0, dan semuanya memakai voucher GRATISONGKIR. Contoh di bawah membagi angka 100.000 dengan ongkos kirim setiap pesanan. Untuk pesanan dengan ongkir 0, pembagian biasa akan gagal. Dengan <code>NULLIF(shipping_fee, 0)</code> sebagai pembagi, hasilnya NULL dan query tetap berjalan.</p>`,
       examples: [{ sql: "select order_id, voucher_code, shipping_fee,\n       nullif(shipping_fee, 0) as ongkir_atau_kosong,\n       round(100000 / nullif(shipping_fee, 0), 2) as kali_ongkir\nfrom app.orders\nwhere order_id between 100001 and 100040\norder by shipping_fee\nlimit 10;", note: "Pesanan dengan ongkir 0 menghasilkan NULL di dua kolom terakhir, bukan error." }],
     },
     {
@@ -102,9 +102,9 @@ end</code></pre>
     },
   ],
   tsql: [
-    { pg: "coalesce(a, b)", tsql: "coalesce(a, b) atau isnull(a, b)", note: "ISNULL hanya menerima dua nilai dan khas SQL Server. COALESCE berlaku di keduanya." },
+    { pg: "coalesce(a, b)", tsql: "coalesce(a, b) atau isnull(a, b)", note: "ISNULL hanya menerima dua nilai dan tidak ada di PostgreSQL. COALESCE menerima banyak nilai dan berlaku di keduanya." },
     { pg: "case when … then … else … end", tsql: "case when … then … else … end, atau iif(syarat, a, b)", note: "IIF adalah singkatan khas SQL Server untuk CASE dengan satu syarat." },
-    { pg: "nilai::date", tsql: "cast(nilai as date) atau convert(date, nilai)", note: "SQL Server tidak mengenal ::." },
+    { pg: "nilai::date", tsql: "cast(nilai as date) atau convert(date, nilai)", note: "Di SQL Server, :: bukan tanda konversi tipe (tanda itu dipakai untuk keperluan lain), jadi pakai CAST atau CONVERT." },
     { pg: "7 / 2 = 3", tsql: "7 / 2 = 3", note: "Pembagian bilangan bulat juga terpotong di SQL Server." },
     { pg: "cast(2.7 as integer) = 3", tsql: "cast(2.7 as int) = 2", note: "PostgreSQL membulatkan ke bilangan bulat terdekat; SQL Server membuang angka di belakang koma." },
     { pg: "round(3.456, 1) = 3.5", tsql: "round(3.456, 1) = 3.500", note: "Di SQL Server, ROUND mempertahankan jumlah digit di belakang koma dan mengisinya dengan nol." },

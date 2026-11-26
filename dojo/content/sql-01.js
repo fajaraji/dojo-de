@@ -38,7 +38,7 @@ export default {
     },
     {
       title: "Skema: kelompok tabel",
-      html: `<p>Database perusahaan bisa berisi ratusan tabel. Supaya rapi, tabel dikelompokkan ke dalam <b>skema</b>. Database TokoKita punya dua skema:</p>
+      html: `<p>Database perusahaan bisa berisi ratusan tabel. Supaya rapi, tabel dikelompokkan ke dalam <b>skema</b>. Tabel TokoKita disimpan di dua skema:</p>
 <ul><li><code>app</code>: tabel yang dipakai aplikasi toko setiap hari, misalnya <code>app.customers</code> (pelanggan) dan <code>app.orders</code> (pesanan).</li>
 <li><code>raw</code>: data mentah yang datang dari berkas atau sistem lain, misalnya <code>raw.supplier_price_upload</code> (berkas harga dari pemasok).</li></ul>
 <p>Saat menulis query, sebut tabel dengan nama lengkapnya: nama skema, titik, lalu nama tabel. Jadi tabel kota ditulis <code>app.cities</code>. Kalau kamu hanya menulis <code>cities</code>, PostgreSQL akan menjawab bahwa tabel itu tidak ditemukan.</p>`,
@@ -63,7 +63,7 @@ export default {
 <ul><li><b>Huruf besar atau kecil sama saja untuk kata perintah.</b> <code>select</code>, <code>SELECT</code>, dan <code>Select</code> dibaca sama. Di kursus ini kata perintah kadang ditulis besar di penjelasan supaya mudah dibedakan dari nama kolom.</li>
 <li><b>Spasi dan baris baru bebas.</b> Query boleh ditulis dalam satu baris atau beberapa baris. Menulis setiap bagian di baris sendiri membuat query panjang lebih mudah dibaca.</li>
 <li><b>Titik koma (<code>;</code>) menandai akhir query.</b> Kalau hanya ada satu query, titik koma boleh dihilangkan. Kalau ada beberapa query sekaligus, titik koma memisahkan satu dengan yang lain.</li>
-<li><b>Koma memisahkan nama kolom.</b> Lupa koma adalah salah tulis yang paling sering terjadi, dan akibatnya akan kamu lihat di bagian AS.</li>
+<li><b>Koma memisahkan nama kolom.</b> Lupa koma adalah salah tulis yang mudah terjadi, dan akibatnya akan kamu lihat di bagian AS.</li>
 <li><b>Komentar</b> adalah catatan untuk manusia, tidak dijalankan. Tulis dua tanda minus (<code>--</code>), lalu semua teks setelahnya sampai akhir baris diabaikan database.</li></ul>`,
       examples: [{ sql: "-- nama dan email pelanggan\nselect full_name, email\nfrom app.customers\nlimit 5;", note: "Baris pertama adalah komentar, jadi database langsung membaca dari kata select. Bagian limit 5 dijelaskan di subbab berikutnya." }],
     },
@@ -77,13 +77,13 @@ export default {
       title: "SELECT *: semua kolom",
       html: `<p>Tanda bintang (<code>*</code>) setelah SELECT berarti "semua kolom", dengan urutan sesuai susunan tabelnya. Cara ini praktis untuk melihat isi tabel yang belum kamu kenal.</p>
 <p>Salah satu kolom yang muncul adalah <code>sku</code> (<i>stock keeping unit</i>), yaitu kode unik produk yang tertulis di kemasan dan dipakai pemasok, misalnya TK-10007.</p>
-<p>Di pekerjaan nyata, sebutkan kolom yang memang dibutuhkan. Query dengan <code>*</code> mengambil kolom yang tidak dipakai, sehingga lebih lambat untuk tabel besar. Hasilnya juga bisa berubah diam-diam kalau suatu hari tabel itu ditambah kolom baru.</p>`,
+<p>Di pekerjaan nyata, sebutkan kolom yang memang dibutuhkan. Query dengan <code>*</code> ikut mengambil kolom yang tidak dipakai, sehingga hasilnya lebih besar dari yang perlu. Hasilnya juga bisa berubah diam-diam kalau suatu hari tabel itu ditambah kolom baru.</p>`,
       examples: [{ sql: "select *\nfrom app.products\nlimit 3;", note: "Semua delapan kolom tabel produk tampil: product_id, sku, product_name, category_id, brand, list_price, is_active, dan created_at." }],
     },
     {
       title: "AS: memberi nama lain pada kolom hasil",
       html: `<p>Nama kolom di database sering singkat atau berbahasa Inggris. Untuk laporan, kamu bisa memberi nama lain pada kolom hasil dengan <code>AS</code>. Nama lain ini disebut <b>alias</b>. Alias hanya mengubah judul kolom di hasil query; isi dan nama kolom di tabel aslinya tidak berubah.</p>
-<p>Kata <code>AS</code> sebenarnya boleh dihilangkan: <code>select product_name nama_produk</code> juga memberi alias. Inilah sebabnya lupa koma berbahaya. Kalau kamu menulis <code>select product_name list_price</code> (tanpa koma), PostgreSQL tidak menganggapnya salah. Ia menampilkan <i>satu</i> kolom berisi nama produk, dengan judul <code>list_price</code>. Selalu tulis <code>AS</code> supaya maksudmu jelas.</p>`,
+<p>Kata <code>AS</code> sebenarnya boleh dihilangkan, selama aliasnya bukan kata perintah SQL seperti <code>from</code>: <code>select product_name nama_produk</code> juga memberi alias. Inilah sebabnya lupa koma berbahaya. Kalau kamu menulis <code>select product_name list_price</code> (tanpa koma), PostgreSQL tidak menganggapnya salah. Ia menampilkan <i>satu</i> kolom berisi nama produk, dengan judul <code>list_price</code>. Selalu tulis <code>AS</code> supaya maksudmu jelas.</p>`,
       examples: [{ sql: "select product_name as nama_produk,\n       list_price as harga\nfrom app.products\nlimit 5;", note: "Judul kolom hasil berubah menjadi nama_produk dan harga. Alias yang terdiri dari satu kata dengan huruf kecil bisa ditulis tanpa tanda kutip." }],
     },
     {

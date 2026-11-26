@@ -23,7 +23,7 @@ for (const id of LESSON_ORDER) {
   lessons.push((await import(pathToFileURL(file).href)).default);
 }
 
-const problems = [];
+const problems = [], drafts = [];
 const report = (id, msg) => problems.push(`${id}: ${msg}`);
 const stripHtml = (h) => String(h || "").replace(/<pre[\s\S]*?<\/pre>/g, " ").replace(/<[^>]+>/g, " ").replace(/&[a-z]+;/g, " ");
 const BANNED = [/\bcaveat\b/i, /\bmenyempit\b/i, /\bworth noting\b/i];
@@ -58,6 +58,8 @@ for (let i = 0; i < lessons.length; i++) {
   const L = lessons[i];
   if (only && L.id !== only) continue;
   if (L.missing) { report(L.id, `berkas ${L.id}.js belum ada`); continue; }
+  // bab kerangka (draft) hanya diperiksa kalau diminta langsung dengan --lesson
+  if (L.draft && !only) { drafts.push(L.id); continue; }
 
   // fitur SQL yang boleh dipakai: bab-bab sampai prasyarat, ditambah bab ini sendiri
   const base = PREREQ[L.id] ? LESSON_ORDER.indexOf(PREREQ[L.id]) : i - 1;
@@ -135,7 +137,8 @@ for (let i = 0; i < lessons.length; i++) {
 }
 await db.close();
 
-const checked = lessons.filter(L => !only || L.id === only).length;
+const checked = lessons.filter(L => (!only || L.id === only) && !(L.draft && !only)).length;
 for (const p of problems) console.log(p);
+if (drafts.length) console.log(`Masih kerangka (tidak tampil, tidak diperiksa): ${drafts.join(", ")}`);
 console.log(problems.length ? `\n${problems.length} masalah di ${checked} bab.` : `Semua ${checked} bab lulus pemeriksaan.`);
 process.exit(problems.length ? 1 : 0);

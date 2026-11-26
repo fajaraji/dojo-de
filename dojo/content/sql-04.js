@@ -52,12 +52,12 @@ export default {
       title: "Tanggal hari ini, dan kenapa jarang dipakai di latihan",
       html: `<p><code>CURRENT_DATE</code> memberi tanggal hari ini, dan <code>NOW()</code> memberi tanggal dan jam sekarang. Keduanya dipakai di pekerjaan nyata untuk syarat seperti "pesanan 7 hari terakhir".</p>
 <p>Data TokoKita berhenti pada 31 Oktober 2025. Kalau latihan memakai CURRENT_DATE, jawabannya akan berubah setiap hari. Karena itu, latihan di kursus ini memakai tanggal tetap sebagai "hari ini", yaitu <code>date '2025-10-31'</code>. Kata <code>date</code> di depan teks memberi tahu PostgreSQL bahwa teks itu adalah tanggal. Dengan cara yang sama, <code>timestamp '2025-10-31 08:00:00'</code> membuat nilai tanggal-dan-jam.</p>
-<p>Soal zona waktu: kolom bertipe <code>timestamp</code> di TokoKita tidak menyimpan zona waktu, jadi anggap semuanya dalam WIB (Waktu Indonesia Barat, tujuh jam di depan waktu UTC, waktu acuan dunia). Sistem nyata sering memakai <code>timestamptz</code>. Tipe ini menyimpan satu titik waktu yang pasti (disimpan dalam UTC), lalu menampilkannya sesuai zona waktu yang sedang dipakai, misalnya WIB atau WITA. Hati-hati saat membandingkan data dari dua sistem yang zonanya berbeda.</p>`,
+<p>Soal zona waktu: kolom bertipe <code>timestamp</code> di TokoKita tidak menyimpan zona waktu, dan kamus data juga tidak menyebutnya. Di kursus ini, anggap semuanya dalam WIB (Waktu Indonesia Barat, tujuh jam di depan waktu UTC, waktu acuan dunia). Sistem nyata sering memakai <code>timestamptz</code>. Tipe ini menyimpan satu titik waktu yang pasti (disimpan dalam UTC), lalu menampilkannya sesuai zona waktu yang sedang dipakai, misalnya WIB atau WITA. Hati-hati saat membandingkan data dari dua sistem yang zonanya berbeda.</p>`,
       examples: [{ sql: "select current_date as hari_ini_sebenarnya,\n       now() as sekarang,\n       date '2025-10-31' as hari_ini_di_latihan;", note: "Dua kolom pertama mengikuti jam dan zona waktu komputermu; kolom ketiga selalu sama." }],
     },
     {
       title: "Menghitung dengan tanggal",
-      html: `<p>Ada dua operasi tanggal yang paling sering dipakai:</p>
+      html: `<p>Ada dua operasi dasar dengan tanggal:</p>
 <ul><li><b>Tanggal dikurangi tanggal</b> menghasilkan jumlah hari, berupa bilangan bulat. <code>date '2025-10-31' - signup_date</code> adalah lama pelanggan terdaftar, dalam hari.</li>
 <li><b>Tanggal ditambah atau dikurangi interval.</b> <code>order_ts + interval '3 days'</code> adalah tiga hari setelah pesanan dibuat. Satuan yang bisa dipakai antara lain <code>'2 hours'</code>, <code>'1 month'</code>, dan <code>'1 year'</code>.</li></ul>
 <p>Untuk kolom tanggal-dan-jam, ubah dulu ke tanggal dengan <code>::date</code> kalau yang dibutuhkan jumlah hari. Kalau dua timestamp dikurangi langsung, hasilnya interval, misalnya <code>2 days 05:30:00</code>.</p>
@@ -69,7 +69,7 @@ export default {
     },
     {
       title: "DATE_TRUNC dan EXTRACT",
-      html: `<p><code>DATE_TRUNC('satuan', x)</code> memotong tanggal ke awal satuan itu. <code>date_trunc('month', order_ts)</code> mengubah semua pesanan bulan Maret menjadi tanggal 1 Maret jam 00:00. Inilah cara standar untuk melaporkan data per bulan. Satuan lain: <code>'year'</code>, <code>'quarter'</code>, <code>'week'</code>, dan <code>'day'</code>. Hasilnya bertipe timestamp; tambahkan <code>::date</code> kalau hanya butuh tanggal.</p>
+      html: `<p><code>DATE_TRUNC('satuan', x)</code> memotong tanggal ke awal satuan itu. <code>date_trunc('month', order_ts)</code> mengubah semua pesanan bulan Maret menjadi tanggal 1 Maret jam 00:00. Inilah cara standar untuk melaporkan data per bulan. Satuan lain: <code>'year'</code>, <code>'quarter'</code>, <code>'week'</code>, dan <code>'day'</code>. Untuk kolom bertipe timestamp seperti <code>order_ts</code>, hasilnya juga bertipe timestamp; tambahkan <code>::date</code> kalau hanya butuh tanggal.</p>
 <p><code>EXTRACT(bagian FROM x)</code> mengambil satu bagian sebagai angka: <code>year</code>, <code>month</code>, <code>day</code>, <code>hour</code>, atau <code>dow</code> (hari dalam minggu: 0 = Minggu sampai 6 = Sabtu).</p>`,
       examples: [{ sql: "select order_id, order_ts,\n       date_trunc('month', order_ts)::date as bulan,\n       extract(year from order_ts) as tahun,\n       extract(hour from order_ts) as jam,\n       extract(dow from order_ts) as hari_ke\nfrom app.orders\nwhere order_id between 100001 and 100008;", note: "Semua pesanan di bulan yang sama mendapat nilai bulan yang sama. Itu sebabnya DATE_TRUNC dipakai untuk mengelompokkan data per bulan." }],
     },
@@ -82,7 +82,7 @@ export default {
     },
     {
       title: "Membersihkan data mentah: berkas harga dari pemasok",
-      html: `<p>Tabel <code>raw.supplier_price_upload</code> berisi berkas harga baru dari pemasok, apa adanya. Semua kolomnya teks, dan formatnya tidak seragam:</p>
+      html: `<p>Tabel <code>raw.supplier_price_upload</code> berisi berkas harga baru dari pemasok, apa adanya. Semua kolomnya bertipe teks, kecuali nomor baris berkas (<code>row_no</code>, bilangan bulat), dan formatnya tidak seragam:</p>
 <ul><li>Kode produk ditulis <code>' tk-10931'</code>, <code>'TK10812 '</code>, atau <code>'TK-10553'</code>, padahal di tabel produk formatnya <code>TK-10553</code>.</li>
 <li>Harga ditulis <code>'Rp 63.900'</code>, <code>'229.900'</code>, <code>'192900'</code>, <code>'34,900'</code>, <code>'Rp141.900,00'</code>, atau kosong.</li>
 <li>Tanggal ditulis <code>'29/09/2025'</code> atau <code>'2025-09-16'</code>.</li></ul>
@@ -102,12 +102,12 @@ export default {
   ],
   tsql: [
     { pg: "length(x)", tsql: "len(x)", note: "LEN di SQL Server tidak menghitung spasi di akhir teks." },
-    { pg: "a || b", tsql: "a + b, atau concat(a, b)", note: "Dengan +, hasilnya NULL kalau salah satu bagiannya NULL, sama seperti ||." },
+    { pg: "a || b", tsql: "a + b, atau concat(a, b); a || b mulai SQL Server 2025", note: "Dengan + dan ||, hasilnya NULL kalau salah satu bagiannya NULL. CONCAT menganggap NULL sebagai teks kosong, sama seperti di PostgreSQL." },
     { pg: "position('@' in email)", tsql: "charindex('@', email)", note: "Sama-sama menulis teks yang dicari lebih dulu; CHARINDEX memakai koma, bukan IN." },
     { pg: "split_part(email, '@', 2)", tsql: "substring(email, charindex('@', email) + 1, len(email))", note: "SQL Server tidak punya SPLIT_PART. STRING_SPLIT ada, tapi menghasilkan baris, bukan kolom." },
-    { pg: "now(), current_date", tsql: "getdate(), cast(getdate() as date)", note: "" },
+    { pg: "now(), current_date", tsql: "getdate(), cast(getdate() as date)", note: "Mulai SQL Server 2025, current_date juga tersedia. getdate() tidak menyertakan zona waktu, sedangkan now() di PostgreSQL bertipe timestamptz." },
     { pg: "order_ts + interval '3 days'", tsql: "dateadd(day, 3, order_ts)", note: "" },
-    { pg: "tanggal_b - tanggal_a", tsql: "datediff(day, tanggal_a, tanggal_b)", note: "Di SQL Server, tanggal tidak bisa dikurangi langsung untuk mendapat jumlah hari." },
+    { pg: "tanggal_b - tanggal_a", tsql: "datediff(day, tanggal_a, tanggal_b)", note: "Di SQL Server, nilai bertipe date tidak bisa dikurangi dengan tanda minus. Pakai DATEDIFF untuk mendapat jumlah hari." },
     { pg: "date_trunc('month', x)", tsql: "datetrunc(month, x), atau datefromparts(year(x), month(x), 1)", note: "DATETRUNC baru ada sejak SQL Server 2022." },
     { pg: "extract(year from x)", tsql: "year(x), atau datepart(year, x)", note: "" },
     { pg: "to_char(x, 'YYYY-MM')", tsql: "format(x, 'yyyy-MM')", note: "Pola huruf di FORMAT berbeda: yyyy untuk tahun, MM untuk bulan." },

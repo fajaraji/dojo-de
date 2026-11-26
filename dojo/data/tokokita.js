@@ -413,7 +413,7 @@ export const SCHEMA_DOC = [
   { table: "raw.customer_snapshot", grain: "1 baris = 1 pelanggan pada 1 tanggal potret (akhir bulan, Jan–Okt 2025)", description: "Potret data pelanggan yang diambil setiap akhir bulan. Dipakai untuk membangun riwayat perubahan pelanggan.", columns: [
     C("snapshot_date", "date", "Tanggal potret diambil (hari terakhir bulan)."), C("customer_id", "integer", "Nomor pelanggan."), C("full_name", "text", "Nama pada tanggal potret."),
     C("email", "text", "Email pada tanggal potret."), C("city_id", "integer", "Kota pada tanggal potret."), C("segment", "text", "Segmen pada tanggal potret.")] },
-  { table: "raw.supplier_price_upload", grain: "1 baris = 1 baris di berkas upload pemasok", description: "Berkas harga baru dari pemasok, apa adanya. Semua kolom berupa teks, formatnya tidak seragam, dan ada baris dobel.", columns: [
+  { table: "raw.supplier_price_upload", grain: "1 baris = 1 baris di berkas upload pemasok", description: "Berkas harga baru dari pemasok, apa adanya. Semua kolom berupa teks kecuali nomor baris (row_no), formatnya tidak seragam, dan ada baris dobel.", columns: [
     C("row_no", "integer", "Nomor baris di berkas."), C("sku_text", "text", "Kode produk seperti yang diketik pemasok."), C("price_text", "text", "Harga seperti yang diketik pemasok, misalnya 'Rp 125.000' atau '125000'."),
     C("effective_date_text", "text", "Tanggal mulai berlaku, dalam format DD/MM/YYYY atau YYYY-MM-DD."), C("supplier", "text", "Nama pemasok seperti yang diketik.")] },
   { table: "raw.web_events", grain: "1 baris = 1 aktivitas pelanggan di situs atau aplikasi", description: "Catatan aktivitas pelanggan (Sep–Okt 2025): melihat halaman, mencari, memasukkan ke keranjang, checkout, dan membeli.", columns: [

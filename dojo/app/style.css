@@ -109,3 +109,6 @@ dl.terms dd{margin:0}
   .status{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.callout.exam{border-left:4px solid var(--warn)}
+.clock{font-family:var(--f-mono);font-size:22px;font-weight:700;min-width:7ch;font-variant-numeric:tabular-nums}
+.clock.over{color:var(--bad)}
