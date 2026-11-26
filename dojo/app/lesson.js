@@ -9,6 +9,10 @@ function exampleHtml(ex, key) {
   if (ex.lang === "shell") return `<div class="box ex"><pre class="sh"><code>${esc(ex.code)}</code></pre>
 <div class="row"><button data-act="copy" data-key="${key}">Salin perintah</button><span class="kbd">Jalankan di terminal laptopmu (PowerShell).</span></div>
 ${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div></div>`;
+  // contoh file: isi berkas (misalnya Dockerfile, compose.yaml) yang disimpan pengguna di laptop
+  if (ex.lang === "file") return `<div class="box ex"><div class="kbd">Isi berkas <code>${esc(ex.filename || "")}</code></div><pre class="file"><code>${esc(ex.code)}</code></pre>
+<div class="row"><button data-act="copy" data-key="${key}">Salin isi berkas</button><span class="kbd">Simpan dengan editor teks di laptopmu.</span></div>
+${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div></div>`;
   const py = ex.lang === "py";
   return `<div class="box ex"><pre class="${py ? "py" : "sql"}"><code>${esc(py ? ex.code : ex.sql)}</code></pre>
 <div class="row"><button data-act="ex" data-key="${key}">Jalankan contoh</button></div>

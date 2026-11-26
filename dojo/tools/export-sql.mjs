@@ -23,6 +23,10 @@ fs.writeFileSync(path.join(outDir, "tokokita-postgres.sql"), head("PostgreSQL") 
 // SQL Server: tipe disesuaikan (text → nvarchar, boolean → bit, timestamp → datetime2(0)), rujukan foreign key
 // ditulis lengkap dengan kolomnya, dan CREATE SCHEMA dijalankan sebagai batch tersendiri (GO).
 const SS_DDL = `
+CREATE DATABASE tokokita;
+GO
+USE tokokita;
+GO
 CREATE SCHEMA app;
 GO
 CREATE SCHEMA raw;
@@ -31,18 +35,18 @@ CREATE TABLE app.cities (city_id int PRIMARY KEY, city_name nvarchar(100) NOT NU
 CREATE TABLE app.categories (category_id int PRIMARY KEY, category_name nvarchar(100) NOT NULL, parent_id int REFERENCES app.categories (category_id));
 CREATE TABLE app.staff (staff_id int PRIMARY KEY, full_name nvarchar(100) NOT NULL, role nvarchar(50) NOT NULL, manager_id int REFERENCES app.staff (staff_id));
 CREATE TABLE app.customers (customer_id int PRIMARY KEY, full_name nvarchar(100) NOT NULL, email nvarchar(200) NOT NULL, phone nvarchar(30), city_id int NOT NULL REFERENCES app.cities (city_id), segment nvarchar(20) NOT NULL, signup_date date NOT NULL);
-CREATE TABLE app.products (product_id int PRIMARY KEY, sku nvarchar(50) NOT NULL UNIQUE, product_name nvarchar(200) NOT NULL, category_id int NOT NULL REFERENCES app.categories (category_id), brand nvarchar(100) NOT NULL, list_price numeric(12,2) NOT NULL, is_active bit NOT NULL, created_at date NOT NULL);
-CREATE TABLE app.product_price_history (product_id int NOT NULL REFERENCES app.products (product_id), price numeric(12,2) NOT NULL, valid_from date NOT NULL, PRIMARY KEY (product_id, valid_from));
-CREATE TABLE app.orders (order_id int PRIMARY KEY, customer_id int NOT NULL REFERENCES app.customers (customer_id), order_ts datetime2(0) NOT NULL, channel nvarchar(20) NOT NULL, status nvarchar(20) NOT NULL, shipping_fee numeric(12,2) NOT NULL, voucher_code nvarchar(50), handled_by int REFERENCES app.staff (staff_id), updated_at datetime2(0) NOT NULL);
-CREATE TABLE app.order_items (order_id int NOT NULL REFERENCES app.orders (order_id), line_no int NOT NULL, product_id int NOT NULL REFERENCES app.products (product_id), qty int NOT NULL, unit_price numeric(12,2) NOT NULL, discount numeric(12,2) NOT NULL, PRIMARY KEY (order_id, line_no));
-CREATE TABLE app.payments (payment_id int PRIMARY KEY, order_id int NOT NULL REFERENCES app.orders (order_id), paid_ts datetime2(0) NOT NULL, method nvarchar(30) NOT NULL, amount numeric(12,2) NOT NULL, status nvarchar(20) NOT NULL);
+CREATE TABLE app.products (product_id int PRIMARY KEY, sku nvarchar(50) NOT NULL UNIQUE, product_name nvarchar(200) NOT NULL, category_id int NOT NULL REFERENCES app.categories (category_id), brand nvarchar(100) NOT NULL, list_price decimal(12,2) NOT NULL, is_active bit NOT NULL, created_at date NOT NULL);
+CREATE TABLE app.product_price_history (product_id int NOT NULL REFERENCES app.products (product_id), price decimal(12,2) NOT NULL, valid_from date NOT NULL, PRIMARY KEY (product_id, valid_from));
+CREATE TABLE app.orders (order_id int PRIMARY KEY, customer_id int NOT NULL REFERENCES app.customers (customer_id), order_ts datetime2(0) NOT NULL, channel nvarchar(20) NOT NULL, status nvarchar(20) NOT NULL, shipping_fee decimal(12,2) NOT NULL, voucher_code nvarchar(50), handled_by int REFERENCES app.staff (staff_id), updated_at datetime2(0) NOT NULL);
+CREATE TABLE app.order_items (order_id int NOT NULL REFERENCES app.orders (order_id), line_no int NOT NULL, product_id int NOT NULL REFERENCES app.products (product_id), qty int NOT NULL, unit_price decimal(12,2) NOT NULL, discount decimal(12,2) NOT NULL, PRIMARY KEY (order_id, line_no));
+CREATE TABLE app.payments (payment_id int PRIMARY KEY, order_id int NOT NULL REFERENCES app.orders (order_id), paid_ts datetime2(0) NOT NULL, method nvarchar(30) NOT NULL, amount decimal(12,2) NOT NULL, status nvarchar(20) NOT NULL);
 CREATE TABLE app.shipments (order_id int PRIMARY KEY REFERENCES app.orders (order_id), courier nvarchar(50) NOT NULL, shipped_ts datetime2(0) NOT NULL, delivered_ts datetime2(0));
 CREATE TABLE app.returns (return_id int PRIMARY KEY, order_id int NOT NULL, line_no int NOT NULL, return_ts datetime2(0) NOT NULL, qty int NOT NULL, reason nvarchar(200) NOT NULL, FOREIGN KEY (order_id, line_no) REFERENCES app.order_items (order_id, line_no));
 CREATE TABLE raw.customer_snapshot (snapshot_date date, customer_id int, full_name nvarchar(100), email nvarchar(200), city_id int, segment nvarchar(20));
 CREATE TABLE raw.supplier_price_upload (row_no int, sku_text nvarchar(100), price_text nvarchar(100), effective_date_text nvarchar(100), supplier nvarchar(200));
 CREATE TABLE raw.web_events (event_id bigint, customer_id int, event_ts datetime2(0), event_type nvarchar(30), page nvarchar(200));
-CREATE TABLE raw.orders_batch2 (order_id int, customer_id int, order_ts datetime2(0), channel nvarchar(20), status nvarchar(20), shipping_fee numeric(12,2), voucher_code nvarchar(50), updated_at datetime2(0));
-CREATE TABLE raw.finance_monthly (bln date, gross_sales numeric(14,2));
+CREATE TABLE raw.orders_batch2 (order_id int, customer_id int, order_ts datetime2(0), channel nvarchar(20), status nvarchar(20), shipping_fee decimal(12,2), voucher_code nvarchar(50), updated_at datetime2(0));
+CREATE TABLE raw.finance_monthly (bln date, gross_sales decimal(14,2));
 GO
 `;
 const ssValue = (v) => {

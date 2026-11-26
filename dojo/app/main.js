@@ -249,7 +249,7 @@ document.addEventListener("click", async (e) => {
     let text, key;
     if (act === "copy") { const [, si, ei] = b.dataset.key.split("-").map(Number); text = lessons.find(x => x.id === current).sections[si].examples[ei].code; key = b.dataset.key; }
     else { text = findDrill(id).command; key = id; }
-    try { await navigator.clipboard.writeText(text); fbSet(key, "info", "Perintah disalin. Tempel di terminal laptopmu."); }
+    try { await navigator.clipboard.writeText(text); fbSet(key, "info", b.textContent.includes("berkas") ? "Isi berkas disalin. Tempel di editor teks, lalu simpan dengan nama berkas di atas." : "Perintah disalin. Tempel di terminal laptopmu."); }
     catch { fbSet(key, "info", "Browser tidak mengizinkan menyalin otomatis. Pilih teks perintahnya lalu tekan Ctrl+C."); }
   } else if (act === "exam-start") {
     if (!state.exam[id]) { state.exam[id] = Date.now(); save("exam", state.exam); }

@@ -72,7 +72,7 @@ async function runPy(code, { setup = "" } = {}) {
 }
 
 // kode di bab beserta bahasanya: contoh (sql/py/shell) dan soal
-const exampleCode = (ex) => ex.lang === "py" ? { lang: "py", code: ex.code } : ex.lang === "shell" ? null : { lang: "sql", code: ex.sql };
+const exampleCode = (ex) => ex.lang === "py" ? { lang: "py", code: ex.code } : (ex.lang === "shell" || ex.lang === "file") ? null : { lang: "sql", code: ex.sql };
 function drillCodes(d) {
   if (d.kind === "py") return [d.start, d.solution, d.check].filter(Boolean).map(code => ({ lang: "py", code }));
   if (d.kind === "number" && d.answerPy) return [{ lang: "py", code: d.answerPy }];
@@ -125,6 +125,7 @@ for (let i = 0; i < lessons.length; i++) {
   // contoh harus jalan dan menghasilkan tabel (SQL) atau keluaran (Python); contoh shell hanya ditampilkan
   for (const s of L.sections || []) for (const ex of s.examples || []) {
     if (ex.lang === "shell") { if (!ex.code) report(L.id, `contoh shell di "${s.title}" kosong`); continue; }
+    if (ex.lang === "file") { if (!ex.code || !ex.filename) report(L.id, `contoh file di "${s.title}" harus punya code dan filename`); continue; }
     if (ex.lang === "py") {
       const r = await runPy(ex.code, { setup: ex.setup || "" });
       if (!r.ok) report(L.id, `contoh Python di "${s.title}" gagal: ${r.error.message}`);
