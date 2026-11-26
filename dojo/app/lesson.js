@@ -1,0 +1,52 @@
+// Membuat HTML satu bab: tujuan, istilah, penjelasan + contoh, padanan SQL Server, ringkasan, dan soal.
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const PART = { sql: "Bagian 1 · SQL", model: "Bagian 2 · Data Modeling & Warehouse", capstone: "Capstone" };
+const KIND = { sql: "Tulis SQL", fix: "Perbaiki query", build: "Bangun tabel", number: "Hitung angka", choice: "Pilihan ganda", explain: "Jelaskan" };
+
+function exampleHtml(ex, key) {
+  return `<div class="box ex"><pre class="sql"><code>${esc(ex.sql)}</code></pre>
+<div class="row"><button data-act="ex" data-key="${key}">Jalankan contoh</button></div>
+${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div><div class="out" id="out-${key}"></div></div>`;
+}
+
+function drillHtml(d, n, state) {
+  const done = state.progress[d.id];
+  const tries = state.tries[d.id] || 0;
+  const head = `<div class="dh"><span class="tag">${n}. ${KIND[d.kind] || d.kind}</span>${d.level === "wawancara" ? '<span class="tag hot">Level wawancara</span>' : ""}${done ? '<span class="tag ok">Selesai</span>' : ""}</div>
+<div class="dq">${d.prompt}</div>`;
+  let body = "";
+  if (["sql", "fix", "build"].includes(d.kind)) {
+    const value = state.drafts[d.id] ?? d.start ?? "";
+    body = `<label class="kbd" for="ed-${d.id}">Editor (Ctrl+Enter untuk menjalankan)</label>
+<textarea class="ed" id="ed-${d.id}" data-run="${d.id}" data-draft="${d.id}" spellcheck="false">${esc(value)}</textarea>
+<div class="row"><button class="pri" data-act="check" data-id="${d.id}">Cek jawaban</button><button data-act="run" data-target="${d.id}">Jalankan saja</button>
+<button data-act="hint" data-id="${d.id}">Petunjuk</button><button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat solusi</button>
+${d.start ? `<button data-act="reset" data-id="${d.id}">Kembalikan kode awal</button>` : ""}</div>`;
+  } else if (d.kind === "number") {
+    body = `<div class="row"><label class="kbd" for="num-${d.id}">Jawabanmu</label><input class="numin" id="num-${d.id}" inputmode="decimal" placeholder="contoh: 1250">
+<button class="pri" data-act="check" data-id="${d.id}">Cek</button><button data-act="hint" data-id="${d.id}">Petunjuk</button>
+<button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat cara</button></div>
+<p class="kbd">Hitung dengan query di Ruang coba SQL, lalu tulis angkanya di sini.</p>`;
+  } else if (d.kind === "choice") {
+    body = `<div class="opts">${d.options.map((o, i) => `<button class="opt" data-act="choice" data-id="${d.id}" data-i="${i}">${String.fromCharCode(65 + i)}. ${o}</button>`).join("")}</div>`;
+  } else if (d.kind === "explain") {
+    body = `<label class="kbd" for="note-${d.id}">Tulis jawabanmu dulu (tersimpan di browser ini)</label>
+<textarea class="note" id="note-${d.id}" data-draft="${d.id}">${esc(state.drafts[d.id] || "")}</textarea>
+<div class="row"><button class="pri" data-act="explain" data-id="${d.id}">Bandingkan dengan jawaban contoh</button><button data-act="hint" data-id="${d.id}">Petunjuk</button></div>`;
+  }
+  return `<section class="box drill${done ? " done" : ""}" id="d-${d.id}">${head}${body}<div id="fb-${d.id}"></div><div class="out" id="out-${d.id}"></div></section>`;
+}
+
+export function lessonHtml(L, index, total, prev, next, state) {
+  const sections = L.sections.map((s, si) => `<h2>${esc(s.title)}</h2>${s.html}${(s.examples || []).map((ex, ei) => exampleHtml(ex, `ex-${si}-${ei}`)).join("")}`).join("");
+  return `<div class="eyebrow">${esc(PART[L.part] || L.part)} · Bab ${index + 1} dari ${total} · sekitar ${L.minutes} menit</div>
+<h1>${esc(L.title)}</h1>
+<div class="callout"><b class="lab">Setelah bab ini kamu bisa</b><ul>${L.goals.map(g => `<li>${g}</li>`).join("")}</ul></div>
+${L.terms && L.terms.length ? `<div class="callout"><b class="lab">Istilah di bab ini</b><dl class="terms">${L.terms.map(t => `<dt>${esc(t.term)}</dt><dd>${t.def}</dd>`).join("")}</dl></div>` : ""}
+<div class="prose">${sections}</div>
+${L.tsql && L.tsql.length ? `<h2>Di SQL Server (T-SQL)</h2><div class="tw"><table class="t"><tr><th>PostgreSQL</th><th>SQL Server</th><th>Catatan</th></tr>${L.tsql.map(t => `<tr><td><code>${esc(t.pg)}</code></td><td><code>${esc(t.tsql)}</code></td><td>${t.note}</td></tr>`).join("")}</table></div>` : ""}
+<h2>Ringkasan</h2><ul class="prose">${L.summary.map(s => `<li>${s}</li>`).join("")}</ul>
+<h2>Latihan</h2><p class="prose">Kerjakan berurutan. Tombol "Lihat solusi" baru aktif setelah dua kali cek. Kalau kamu membukanya, tutup lagi lalu ketik ulang jawabannya dari ingatan.</p>
+${L.drills.map((d, i) => drillHtml(d, i + 1, state)).join("")}
+<div class="pager">${prev ? `<a href="#${prev.id}">← ${esc(prev.title)}</a>` : '<a href="#mulai">← Mulai di sini</a>'}${next ? `<a href="#${next.id}">${esc(next.title)} →</a>` : "<span></span>"}</div>`;
+}

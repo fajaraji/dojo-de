@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dojo Data Engineer</title>
+<meta name="description" content="Kursus SQL, data modeling, dan data engineering berbahasa Indonesia, dengan PostgreSQL yang berjalan di browser.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="app/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#mulai"><span class="mark">DE</span>Dojo Data Engineer</a>
+  <div class="meter" title="Latihan yang sudah selesai"><div class="bar"><i id="pbar"></i></div><span id="ptext">0 latihan</span></div>
+  <span class="status" id="status" role="status">Menyiapkan mesin PostgreSQL…</span>
+  <div class="mobnav"><label for="mobsel" class="kbd">Pindah ke</label><select id="mobsel"></select></div>
+</header>
+<div class="wrap">
+  <nav class="rail" id="rail" aria-label="Daftar bab"></nav>
+  <main id="main"><p class="loading">Memuat halaman…</p></main>
+</div>
+<script type="module" src="app/main.js"></script>
+</body>
+</html>

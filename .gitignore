@@ -1,0 +1,12 @@
+# Pola "abaikan semua, kecuali yang disebut": folder ini juga berisi catatan pribadi yang tidak boleh masuk repo.
+/*
+!/.gitignore
+!/.gitattributes
+!/README.md
+!/dojo/
+!/docs/
+
+# di dalam dojo/: paket npm hasil install dan bahan uji coba sekali pakai
+/dojo/vendor-npm/node_modules/
+/dojo/spike/
+/dojo/probe/
