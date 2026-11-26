@@ -49,7 +49,7 @@ export default {
     },
     {
       title: "SUM, AVG, MIN, dan MAX",
-      html: `<p><code>SUM</code> dan <code>AVG</code> hanya untuk angka. <code>MIN</code> dan <code>MAX</code> bisa dipakai untuk angka, tanggal, dan teks. Isi tanda kurungnya boleh berupa ekspresi: <code>SUM(qty * unit_price - discount)</code> menghitung nilai bersih setiap baris dulu, lalu menjumlahkannya.</p>
+      html: `<p><code>SUM</code> dan <code>AVG</code> dipakai untuk angka (PostgreSQL juga menerimanya untuk interval, yaitu lama waktu dari bab 4). <code>MIN</code> dan <code>MAX</code> bisa dipakai untuk angka, tanggal, dan teks. Isi tanda kurungnya boleh berupa ekspresi: <code>SUM(qty * unit_price - discount)</code> menghitung nilai bersih setiap baris dulu, lalu menjumlahkannya.</p>
 <p><code>AVG</code> sama dengan jumlah nilai dibagi banyaknya nilai yang tidak NULL. Di PostgreSQL, AVG dari kolom integer menghasilkan angka desimal (tipe numeric), jadi tidak terpotong seperti <code>7 / 2</code> di bab 3. SUM dari kolom integer menghasilkan tipe <code>bigint</code>, bilangan bulat yang batasnya jauh lebih besar daripada integer.</p>
 <p>Karena NULL dilewati, AVG kolom yang berisi NULL adalah rata-rata dari baris yang terisi saja. Contoh kedua memperlihatkan hal ini pada lama pengiriman: pengiriman yang belum sampai tidak punya tanggal sampai, sehingga tidak ikut dirata-rata.</p>
 <p>Satu jebakan lagi: kalau tidak ada baris yang lolos WHERE, SUM, AVG, MIN, dan MAX menghasilkan NULL, bukan 0. Hanya COUNT yang menghasilkan 0. Bungkus dengan <code>COALESCE(SUM(…), 0)</code> kalau laporanmu butuh angka 0.</p>`,
@@ -64,7 +64,7 @@ export default {
       html: `<p><code>GROUP BY kolom</code> mengumpulkan baris yang nilainya sama di kolom itu menjadi satu <b>kelompok</b>. Fungsi agregasi lalu dihitung sekali untuk setiap kelompok, dan hasilnya berisi satu baris per kelompok. GROUP BY ditulis setelah WHERE dan sebelum ORDER BY.</p>
 <p>GROUP BY tidak mengurutkan hasil. Kalau urutan penting, tetap tulis ORDER BY. ORDER BY boleh memakai alias dari SELECT, misalnya <code>order by jumlah_pesanan desc</code>.</p>
 <p>Kalau GROUP BY berisi beberapa kolom, setiap kombinasi nilai yang muncul di data menjadi satu kelompok. GROUP BY juga boleh berisi ekspresi, misalnya <code>date_trunc('month', order_ts)::date</code> untuk ringkasan per bulan. Tulis ekspresi yang sama persis di SELECT dan di GROUP BY.</p>
-<p>Bagaimana dengan NULL? Semua baris yang kolom pengelompokannya NULL dikumpulkan menjadi <b>satu</b> kelompok. Contoh keempat memperlihatkannya.</p>`,
+<p>Bagaimana dengan NULL? Jalankan contoh keempat: semua pesanan yang <code>voucher_code</code>-nya NULL muncul sebagai <b>satu</b> baris, bukan satu baris per pesanan.</p>`,
       examples: [
         { sql: "select status, count(*) as jumlah_pesanan\nfrom app.orders\ngroup by status\norder by jumlah_pesanan desc;", note: "Lima baris, satu per status. Terbanyak completed (10.879), lalu cancelled (747), returned (319), shipped (49), dan processing (13)." },
         { sql: "select channel, status, count(*) as jumlah_pesanan\nfrom app.orders\ngroup by channel, status\norder by channel, status;", note: "15 baris: 3 channel kali 5 status. Semua pasangannya muncul di data, jadi tidak ada yang hilang. Pasangan yang tidak muncul di data tidak akan tampil sebagai baris berisi 0." },
@@ -81,7 +81,7 @@ group by status;
 
 ERROR 42803: column "orders.order_id" must appear in the GROUP BY clause
 or be used in an aggregate function</code></pre>
-<p>Kelompok "completed" berisi 10.879 pesanan dengan 10.879 order_id berbeda. Satu baris tidak bisa menampilkan semuanya. Angka 42803 adalah kode error PostgreSQL untuk kesalahan pengelompokan (<i>grouping error</i>). Perbaikannya tergantung maksudmu:</p>
+<p>Kelompok "completed" berisi 10.879 pesanan dengan 10.879 order_id berbeda. Satu baris tidak bisa menampilkan semuanya. Angka 42803 adalah kode error yang ditampilkan PostgreSQL bersama pesan ini. Kode yang sama juga muncul untuk kesalahan lain seputar fungsi agregasi, seperti yang terlihat di bagian-bagian berikutnya. Perbaikannya tergantung maksudmu:</p>
 <ul><li>Kalau order_id tidak perlu, hapus dari SELECT.</li>
 <li>Kalau perlu ringkasannya, bungkus dengan fungsi agregasi, misalnya <code>min(order_id)</code> untuk nomor pesanan terkecil di setiap status.</li>
 <li>Kalau kamu menambahkannya ke GROUP BY, setiap pesanan menjadi kelompok sendiri. Hasilnya 12.007 baris dan count(*) selalu 1. Query-nya jalan, tetapi ringkasannya hilang.</li></ul>
@@ -138,9 +138,9 @@ or be used in an aggregate function</code></pre>
   tsql: [
     { pg: "count(*), count(kolom), count(distinct kolom)", tsql: "count(*), count(kolom), count(distinct kolom)", note: "Perilakunya sama: COUNT(kolom) dan COUNT(DISTINCT) tidak menghitung NULL. Bedanya ada di tipe hasil: di PostgreSQL COUNT menghasilkan bigint, di SQL Server COUNT menghasilkan int (batasnya 2.147.483.647)." },
     { pg: "count(*)", tsql: "count_big(*)", note: "COUNT_BIG bekerja seperti COUNT, tetapi hasilnya bigint. Pakai untuk tabel yang barisnya bisa melewati batas int; di SQL Server, COUNT yang melewati batas itu gagal dengan error 8115 (<i>arithmetic overflow</i>: hasil melewati batas tipe angka)." },
-    { pg: "avg(qty) = 1.4460… (numeric)", tsql: "avg(qty) = 1 (int)", note: "Di SQL Server, AVG dari kolom int menghasilkan int, jadi angka di belakang koma dibuang. Ubah tipenya dulu: avg(cast(qty as decimal(10,2))) atau avg(qty * 1.0)." },
+    { pg: "avg(qty) = 1.4460… (numeric)", tsql: "avg(qty) = 1 (int)", note: "Di SQL Server, AVG dari kolom int menghasilkan int, jadi hasilnya bilangan bulat tanpa angka di belakang koma. Ubah tipenya dulu: avg(cast(qty as decimal(10,2))) atau avg(qty * 1.0)." },
     { pg: "sum(qty) bertipe bigint", tsql: "sum(qty) bertipe int", note: "PostgreSQL menaikkan SUM integer menjadi bigint. SQL Server mempertahankan int; pakai sum(cast(qty as bigint)) kalau totalnya bisa melewati 2.147.483.647." },
-    { pg: "count(*) filter (where status = 'cancelled')", tsql: "sum(case when status = 'cancelled' then 1 else 0 end), atau count(case when status = 'cancelled' then 1 end)", note: "SQL Server tidak punya FILTER. Bentuk COUNT(CASE …) bekerja karena CASE tanpa ELSE menghasilkan NULL, dan COUNT melewati NULL." },
+    { pg: "count(*) filter (where status = 'cancelled')", tsql: "sum(case when status = 'cancelled' then 1 else 0 end), atau count(case when status = 'cancelled' then 1 end)", note: "Dokumentasi fungsi agregasi SQL Server tidak memuat FILTER. Bentuk COUNT(CASE …) bekerja karena CASE tanpa ELSE menghasilkan NULL, dan COUNT melewati NULL." },
     { pg: "sum(amount) filter (where status = 'success')", tsql: "sum(case when status = 'success' then amount end)", note: "Sama seperti FILTER: baris yang tidak memenuhi syarat menjadi NULL dan dilewati SUM." },
     { pg: "group by bulan (alias dari SELECT)", tsql: "group by ekspresi lengkapnya", note: "PostgreSQL membolehkan alias SELECT di GROUP BY; SQL Server tidak. Menulis ekspresi lengkap di GROUP BY berlaku di keduanya." },
     { pg: "group by 1, 2 dan order by 1, 2 (nomor posisi kolom)", tsql: "group by ekspresi lengkapnya; order by 1, 2 boleh", note: "Dokumentasi GROUP BY SQL Server hanya menyebut kolom atau perhitungan dari kolom sebagai isi GROUP BY; nomor posisi kolom tidak disebut. Jadi di SQL Server tulis ekspresi lengkap di GROUP BY. ORDER BY menerima nomor posisi kolom, tetapi dokumentasinya menyarankan untuk menghindarinya karena sulit dibaca dan hasilnya bisa salah kalau urutan kolom di SELECT berubah." },

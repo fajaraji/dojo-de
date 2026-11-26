@@ -196,7 +196,7 @@ export default {
   title: "Membangun dimensi",
   minutes: 100,
   goals: [
-    "Menjelaskan beda natural key, business key, dan surrogate key, serta kapan surrogate key dibutuhkan.",
+    "Menjelaskan natural key (disebut juga business key) dan surrogate key, serta kapan surrogate key dibutuhkan.",
     "Menambahkan unknown member supaya baris fakta yang dimensinya belum ada tetap terhitung.",
     "Membangun dimensi tanggal dengan <code>generate_series</code>, lalu memakainya sebagai role-playing dimension.",
     "Mengenali degenerate dimension dan junk dimension.",
@@ -205,7 +205,7 @@ export default {
   terms: [
     { term: "surrogate key", def: "Kunci bilangan bulat yang dibuat gudang data sendiri untuk setiap baris dimensi, tanpa arti bisnis. Tabel fakta merujuk ke dimensi lewat kunci ini." },
     { term: "natural key", def: "Kunci yang berasal dari sistem sumber, misalnya <code>product_id</code> dan <code>customer_id</code> dari aplikasi TokoKita." },
-    { term: "business key", def: "Kode yang dipakai orang dalam pekerjaan sehari-hari untuk mengenali sesuatu, misalnya SKU produk yang tertulis di kemasan. Sering dipakai sebagai natural key." },
+    { term: "business key", def: "Nama lain natural key, terutama kalau nilainya bermakna bagi pengguna bisnis, misalnya SKU produk yang tertulis di kemasan." },
     { term: "unknown member", def: "Baris khusus di tabel dimensi, biasanya dengan surrogate key -1, untuk baris fakta yang dimensinya tidak ditemukan." },
     { term: "dimensi tanggal", def: "Tabel dimensi dengan satu baris per tanggal kalender, berisi bagian-bagian tanggal (tahun, kuartal, nama bulan, nama hari, akhir pekan) yang siap dipakai untuk menyaring dan mengelompokkan." },
     { term: "role-playing dimension", def: "Satu tabel dimensi yang dipakai beberapa kali oleh satu tabel fakta dengan peran berbeda, misalnya dimensi tanggal sebagai tanggal pesan, tanggal kirim, dan tanggal terima." },
@@ -215,7 +215,7 @@ export default {
     { term: "SCD tipe 0", def: "Nilai tidak pernah diubah setelah dimuat, misalnya tanggal daftar pelanggan." },
     { term: "SCD tipe 1", def: "Nilai baru menimpa nilai lama. Riwayatnya hilang." },
     { term: "SCD tipe 2", def: "Setiap perubahan disimpan sebagai baris baru dengan rentang tanggal berlaku (<code>valid_from</code>, <code>valid_to</code>) dan penanda versi terbaru (<code>is_current</code>). Riwayat lengkap tersimpan." },
-    { term: "SCD tipe 3", def: "Nilai sebelumnya disimpan di kolom tambahan di baris yang sama, misalnya segmen sekarang dan segmen awal tahun. Hanya satu langkah riwayat yang tersimpan." },
+    { term: "SCD tipe 3", def: "Nilai sebelumnya disimpan di kolom tambahan di baris yang sama, misalnya segmen sekarang dan segmen awal tahun. Riwayat yang tersimpan terbatas, sebanyak kolom tambahan yang disediakan." },
     { term: "kolom identity", def: "Kolom yang terisi otomatis dengan nomor urut setiap kali baris baru dimasukkan. Dipakai untuk membuat surrogate key." },
   ],
   introduces: [],
@@ -227,7 +227,7 @@ export default {
     },
     {
       title: "Natural key, business key, dan surrogate key",
-      html: `<p><b>Natural key</b> adalah kunci dari sistem sumber, misalnya <code>product_id</code> di <code>app.products</code>. <b>Business key</b> adalah kode yang dipakai orang dalam pekerjaan, misalnya <code>sku</code>: menurut kamus data, kode ini tertulis di kemasan dan dipakai pemasok. Keduanya dibuat di luar gudang data.</p>
+      html: `<p><b>Natural key</b> adalah kunci yang disimpan di sistem sumber, misalnya <code>product_id</code> di <code>app.products</code>. Menurut dokumentasi Microsoft Fabric, natural key kadang disebut <b>business key</b>, dan nilainya bisa bermakna bagi pengguna bisnis. Contohnya <code>sku</code>: menurut kamus data, kode ini tertulis di kemasan dan dipakai pemasok. Natural key dan business key sama-sama dibuat di luar gudang data.</p>
 <p><b>Surrogate key</b> adalah kunci bilangan bulat yang dibuat gudang data sendiri, tanpa arti bisnis. Tabel fakta menyimpan surrogate key, bukan natural key. Alasannya:</p>
 <ul><li><b>Sumber bisa lebih dari satu.</b> Kalau kelak pelanggan juga datang dari sistem lain yang penomorannya juga mulai dari 1, nomor 15 dari dua sistem adalah dua orang berbeda. Surrogate key memberi nomor yang tidak bentrok.</li>
 <li><b>Nomor sumber bisa berubah atau dipakai ulang.</b> Sistem sumber bisa menghapus produk lalu memberikan nomornya ke produk baru. Gudang data menyimpan riwayat bertahun-tahun, jadi tidak boleh bergantung pada keputusan itu.</li>
@@ -252,7 +252,7 @@ export default {
     {
       title: "Dimensi tanggal",
       html: `<p><b>Dimensi tanggal</b> berisi satu baris per tanggal kalender, dengan bagian-bagian tanggal yang siap pakai: tahun, kuartal, bulan, nama bulan, nama hari, dan akhir pekan atau bukan. Dengan tabel ini, laporan cukup JOIN dan GROUP BY, tanpa mengulang rumus tanggal di setiap query. Atribut khusus perusahaan, misalnya hari libur nasional atau periode promosi, cukup ditambahkan di satu tempat.</p>
-<p>Kuncinya, <code>date_key</code>, adalah bilangan bulat berbentuk YYYYMMDD, misalnya 20251031. Bentuk ini mudah dibaca manusia dan urutannya sama dengan urutan tanggal.</p>
+<p>Kuncinya, <code>date_key</code>, adalah bilangan bulat berbentuk YYYYMMDD, misalnya 20251031. Bentuk ini mudah dibaca manusia dan urutannya sama dengan urutan tanggal. Dokumentasi Microsoft Fabric menyebut kunci tanggal (dan kunci jam) sebagai satu-satunya pengecualian untuk aturan surrogate key tanpa arti.</p>
 <p>Rentangnya ditentukan dari data. Query pertama di bawah menunjukkan semua tanggal kejadian di aplikasi berada antara 1 Januari 2024 dan 31 Oktober 2025, sedangkan ekstrak susulan <code>raw.orders_batch2</code> sampai 8 November 2025. Rentang 1 Januari 2024 sampai 31 Desember 2025 (731 hari) mencakup semuanya, dan masih menyisakan tempat untuk data akhir tahun.</p>
 <p>Deretnya dibuat dengan <code>generate_series</code>. <code>extract(isodow from d)</code> memberi nomor hari 1 (Senin) sampai 7 (Minggu), sehingga akhir pekan adalah 6 dan 7. Pola <code>FMMonth</code> dan <code>FMDay</code> di TO_CHAR memberi nama bulan dan nama hari; awalan FM membuang spasi pengisi, karena tanpa FM nama selalu dipanjangkan menjadi 9 karakter. Pola Month dan Day menulis nama dalam bahasa Inggris, misalnya October dan Wednesday. PostgreSQL punya awalan TM (misalnya <code>TMMonth</code>) untuk nama sesuai pengaturan bahasa <code>lc_time</code> (pengaturan database yang menentukan bahasa nama bulan dan hari), tetapi di mesin latihan ini hasilnya tetap bahasa Inggris.</p>`,
       examples: [
@@ -269,16 +269,16 @@ export default {
     {
       title: "Degenerate dimension dan junk dimension",
       html: `<p>Di tabel fakta isi pesanan, <code>order_id</code> berguna untuk melacak baris ke pesanan asalnya. Keterangan pesanan lain (pelanggan, tanggal) sudah punya dimensi sendiri, jadi tidak ada yang tersisa untuk tabel dimensi pesanan. Kolom seperti ini disimpan langsung di tabel fakta tanpa tabel dimensi, dan disebut <b>degenerate dimension</b>.</p>
-<p>Pesanan juga punya beberapa penanda bernilai sedikit: <code>channel</code> (3 nilai), <code>status</code> (5 nilai), dan pakai voucher atau tidak (2 nilai). Membuat tiga dimensi kecil untuk ini berlebihan, dan menyimpan tiga kolom teks di tabel fakta memboroskan tempat. <b>Junk dimension</b> menampung gabungannya di satu tabel kecil, satu baris per kombinasi, dengan satu kunci. Dari 30 kombinasi yang mungkin, data berisi 28; pesanan processing yang memakai voucher dari android dan ios tidak pernah terjadi.</p>`,
+<p>Pesanan juga punya beberapa penanda bernilai sedikit: <code>channel</code> (3 nilai), <code>status</code> (5 nilai), dan pakai voucher atau tidak (2 nilai). Membuat tiga dimensi kecil untuk ini berlebihan, dan menyimpan tiga kolom teks di tabel fakta memboroskan tempat. <b>Junk dimension</b> menampung gabungannya di satu tabel kecil, satu baris per kombinasi, dengan satu kunci. Dari 30 kombinasi yang mungkin, data berisi 28; pesanan processing yang memakai voucher dari android dan ios tidak pernah terjadi. Menurut dokumentasi Microsoft Fabric, junk dimension biasanya berisi semua kombinasi yang mungkin, termasuk yang belum pernah muncul. Dengan begitu, pesanan baru dengan kombinasi itu tetap menemukan kuncinya. Soal di bab ini cukup memakai kombinasi yang muncul di data.</p>`,
       examples: [{ sql: "select channel, status,\n       voucher_code is not null as pakai_voucher,\n       count(*) as pesanan\nfrom app.orders\ngroup by channel, status, voucher_code is not null\norder by channel, status, pakai_voucher;", note: "Setiap baris hasil adalah calon baris junk dimension." }],
     },
     {
       title: "Empat jenis SCD dan cara memilihnya",
-      html: `<p>Jenis SCD dipilih per kolom, bukan per tabel:</p>
+      html: `<p>Jenis SCD dipilih per kolom, bukan per tabel. Dokumentasi Microsoft Fabric juga menyebut satu dimensi bisa memakai SCD tipe 1 dan tipe 2 sekaligus, dan menyebut tipe 1, 2, dan 3 sebagai jenis yang paling umum:</p>
 <ul><li><b>SCD tipe 0</b>: nilai tidak pernah diubah setelah dimuat. Cocok untuk fakta asal yang tidak boleh berubah, misalnya <code>signup_date</code>.</li>
 <li><b>SCD tipe 1</b>: timpa nilai lama. Cocok untuk koreksi (salah ketik nama produk) dan kolom yang riwayatnya tidak dipakai analisis. Laporan lama ikut berubah, karena semua fakta lama sekarang menunjuk ke nilai baru.</li>
 <li><b>SCD tipe 2</b>: buat baris baru untuk setiap perubahan, dengan <code>valid_from</code> (berlaku mulai), <code>valid_to</code> (berlaku sampai), dan <code>is_current</code> (versi terbaru). Cocok kalau pertanyaan bisnis butuh keadaan pada saat kejadian, misalnya penjualan per kota tempat pelanggan tinggal saat memesan.</li>
-<li><b>SCD tipe 3</b>: simpan nilai sebelumnya di kolom tambahan, misalnya <code>segment</code> dan <code>segmen_awal_2025</code>. Cocok untuk membandingkan sebelum dan sesudah satu perubahan besar; perubahan yang lebih lama hilang.</li></ul>
+<li><b>SCD tipe 3</b>: simpan nilai sebelumnya di kolom tambahan, misalnya <code>segment</code> dan <code>segmen_awal_2025</code>. Cocok untuk membandingkan sebelum dan sesudah satu perubahan besar; perubahan yang lebih lama hilang. Dokumentasi Fabric menyebut tipe 3 jarang dipakai dan menyarankan menimbang tipe 2 lebih dulu.</li></ul>
 <p>Contoh SCD tipe 3 di bawah: dari potret pelanggan, 270 pelanggan belum ada pada potret 31 Januari 2025, dan 258 pelanggan segmennya pada 31 Oktober 2025 berbeda dengan segmennya pada 31 Januari 2025.</p>`,
       examples: [{ sql: "select customer_id,\n       max(segment) filter (where snapshot_date = '2025-01-31') as segmen_awal_2025,\n       max(segment) filter (where snapshot_date = '2025-10-31') as segment\nfrom raw.customer_snapshot\ngroup by customer_id\norder by customer_id\nlimit 10;", note: "Pelanggan yang mendaftar setelah Januari 2025 mendapat NULL di kolom segmen_awal_2025." }],
     },
@@ -320,9 +320,10 @@ export default {
     { pg: "to_char(d, 'FMMonth'), to_char(d, 'FMDay')", tsql: "datename(month, d), datename(weekday, d)", note: "DATENAME menghasilkan nvarchar. Perilakunya berbeda dari pola Month dan Day: nama bulan atau harinya mengikuti bahasa sesi (SET LANGUAGE) dan bahasa bawaan login, jadi hasilnya bukan bahasa Inggris kalau bahasa sesinya bukan bahasa Inggris." },
     { pg: "to_char(d, 'YYYYMMDD')::integer", tsql: "datepart(year, d) * 10000 + datepart(month, d) * 100 + datepart(day, d)", note: "Menghasilkan bilangan bulat YYYYMMDD langsung dari angka tahun, bulan, dan hari." },
     { pg: "generate_series(date '2024-01-01', date '2025-12-31', interval '1 day')", tsql: "select dateadd(day, value, cast('2024-01-01' as date)) from generate_series(0, 730)", note: "Seperti di bab CTE, GENERATE_SERIES di SQL Server (mulai 2022) hanya menerima angka. DATEADD dengan masukan date menghasilkan date." },
-    { pg: "insert … on conflict (product_id) do update set …", tsql: "merge dw.dim_product as t using (…) as s on t.product_id = s.product_id when matched then update set … when not matched by target then insert (…) values (…);", note: "SQL Server tidak punya ON CONFLICT; padanannya MERGE. MERGE wajib diakhiri titik koma. Kalau satu baris tujuan cocok dengan lebih dari satu baris sumber saat UPDATE, SQL Server menolak perintahnya. PostgreSQL juga punya MERGE dengan aturan serupa." },
+    { pg: "insert … on conflict (product_id) do update set …", tsql: "merge dw.dim_product as t using (…) as s on t.product_id = s.product_id when matched then update set … when not matched by target then insert (…) values (…);", note: "Dokumentasi sintaks INSERT di SQL Server tidak memuat ON CONFLICT; padanannya MERGE. MERGE wajib diakhiri titik koma. Kalau satu baris tujuan cocok dengan lebih dari satu baris sumber saat UPDATE, SQL Server menolak perintahnya. PostgreSQL juga punya MERGE dengan aturan serupa." },
     { pg: "awal_berikutnya - 1", tsql: "dateadd(day, -1, awal_berikutnya)", note: "Nilai date di SQL Server tidak bisa dikurangi angka dengan tanda minus; pakai DATEADD dengan angka negatif." },
-    { pg: "is_current boolean", tsql: "is_current bit", note: "SQL Server tidak punya tipe boolean; pakai bit (1 atau 0)." },
+    { pg: "is_current boolean", tsql: "is_current bit", note: "Daftar tipe data SQL Server tidak memuat boolean. Menurut dokumentasinya, bit (1, 0, atau NULL) dipakai untuk menyimpan nilai benar atau salah." },
+    { pg: "SCD tipe 1 dan tipe 2 dengan SQL (INSERT … ON CONFLICT, LAG, LEAD)", tsql: "SQL biasa, atau Slowly Changing Dimension transformation di SSIS", note: "SSIS punya langkah siap pakai untuk dimensi yang berubah. Di sana kolom tipe 1 disebut changing attribute, tipe 2 historical attribute, dan kolom yang tidak boleh berubah (seperti tipe 0) fixed attribute. Menurut dokumentasinya, langkah itu tidak mendukung tipe 3." },
   ],
   summary: [
     "Natural key dan business key berasal dari luar gudang data. Surrogate key dibuat gudang data sendiri, karena sumber bisa banyak, nomor sumber bisa dipakai ulang, dan SCD tipe 2 butuh banyak baris per pelanggan.",
@@ -367,7 +368,7 @@ export default {
       hint: "insert into dw.dim_product (…) select … on conflict (product_id) do update set kolom = excluded.kolom, …" },
     { id: "model-03-10", kind: "sql", ordered: true, prompt: "Buat isi junk dimension pesanan: setiap kombinasi <code>channel</code>, <code>status</code>, dan pakai voucher atau tidak (<code>voucher_code is not null</code>) yang muncul di <code>app.orders</code>, ditambah kolom kunci bernomor 1, 2, 3, … menurut urutan channel, status, lalu pakai voucher (false sebelum true). Tampilkan kunci, channel, status, dan pakai voucher, urut menurut kunci.",
       solution: "select row_number() over (order by channel, status, pakai_voucher) as order_profile_key, channel, status, pakai_voucher from (select distinct channel, status, voucher_code is not null as pakai_voucher from app.orders) as k order by order_profile_key",
-      why: "DISTINCT mengambil kombinasi yang benar-benar ada (28 dari 30 yang mungkin), lalu ROW_NUMBER memberi kunci. Di tabel sungguhan, kunci ini biasanya kolom identity.", hint: "Ambil kombinasi dengan select distinct di tabel turunan, lalu row_number() over (order by …)." },
+      why: "DISTINCT mengambil kombinasi yang benar-benar ada (28 dari 30 yang mungkin), lalu ROW_NUMBER memberi kunci. Di tabel sungguhan, kunci ini biasanya kolom identity, dan tabelnya biasanya diisi semua kombinasi yang mungkin, termasuk 2 yang belum muncul.", hint: "Ambil kombinasi dengan select distinct di tabel turunan, lalu row_number() over (order by …)." },
     { id: "model-03-11", kind: "sql", prompt: "Bentuk SCD tipe 3: dari <code>raw.customer_snapshot</code>, tampilkan <code>customer_id</code>, segmen pada potret 31 Januari 2025, dan segmen pada potret 31 Oktober 2025, hanya untuk pelanggan yang kedua segmennya ada dan berbeda.",
       solution: "select customer_id, segmen_awal_2025, segmen_sekarang from (select customer_id, max(segment) filter (where snapshot_date = '2025-01-31') as segmen_awal_2025, max(segment) filter (where snapshot_date = '2025-10-31') as segmen_sekarang from raw.customer_snapshot group by customer_id) as s where segmen_awal_2025 <> segmen_sekarang",
       why: "MAX dengan FILTER mengambil segmen dari tanggal potret tertentu menjadi dua kolom. Syarat <> otomatis membuang pelanggan yang belum ada di Januari, karena perbandingan dengan NULL tidak bernilai benar. Hasilnya 258 pelanggan.",

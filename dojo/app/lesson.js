@@ -1,10 +1,16 @@
 // Membuat HTML satu bab: tujuan, istilah, penjelasan + contoh, padanan SQL Server, ringkasan, dan soal.
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-const PART = { sql: "Bagian 1 · SQL", model: "Bagian 2 · Data Modeling & Warehouse", capstone: "Capstone" };
-const KIND = { sql: "Tulis SQL", fix: "Perbaiki query", build: "Bangun tabel", number: "Hitung angka", choice: "Pilihan ganda", explain: "Jelaskan" };
+const PART = { sql: "Bagian 1 · SQL", model: "Bagian 2 · Data Modeling & Warehouse", capstone: "Capstone", tools: "Bagian 3 · Alat kerja engineer",
+  python: "Bagian 4 · Python", pipeline: "Bagian 5 · Pipeline & orkestrasi", cloud: "Bagian 6 · Cloud & big data", advanced: "Bagian 7 · Topik lanjutan", career: "Bagian 8 · Karier" };
+const KIND = { sql: "Tulis SQL", fix: "Perbaiki query", build: "Bangun tabel", number: "Hitung angka", choice: "Pilihan ganda", explain: "Jelaskan", py: "Tulis Python", paste: "Jalankan di laptop" };
 
 function exampleHtml(ex, key) {
-  return `<div class="box ex"><pre class="sql"><code>${esc(ex.sql)}</code></pre>
+  // contoh shell: perintah untuk dijalankan di laptop, hanya ditampilkan dengan tombol salin
+  if (ex.lang === "shell") return `<div class="box ex"><pre class="sh"><code>${esc(ex.code)}</code></pre>
+<div class="row"><button data-act="copy" data-key="${key}">Salin perintah</button><span class="kbd">Jalankan di terminal laptopmu (PowerShell).</span></div>
+${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div></div>`;
+  const py = ex.lang === "py";
+  return `<div class="box ex"><pre class="${py ? "py" : "sql"}"><code>${esc(py ? ex.code : ex.sql)}</code></pre>
 <div class="row"><button data-act="ex" data-key="${key}">Jalankan contoh</button></div>
 ${ex.note ? `<p class="note">${ex.note}</p>` : ""}<div id="fb-${key}"></div><div class="out" id="out-${key}"></div></div>`;
 }
@@ -20,10 +26,18 @@ function drillHtml(d, n, state, exam) {
   const head = `<div class="dh"><span class="tag">${n}. ${KIND[d.kind] || d.kind}</span>${d.level === "wawancara" ? '<span class="tag hot">Level wawancara</span>' : ""}${done ? '<span class="tag ok">Selesai</span>' : ""}</div>
 <div class="dq">${d.prompt}</div>`;
   let body = "";
-  if (["sql", "fix", "build"].includes(d.kind)) {
+  if (d.kind === "paste") {
+    body = `<div class="kbd">Jalankan perintah ini di terminal laptopmu (PowerShell):</div>
+<pre class="sh"><code>${esc(d.command)}</code></pre>
+<div class="row"><button data-act="copy-cmd" data-id="${d.id}">Salin perintah</button></div>
+<label class="kbd" for="paste-${d.id}">Tempel seluruh keluaran perintahnya di sini</label>
+<textarea class="note" id="paste-${d.id}" data-draft="${d.id}" spellcheck="false">${esc(state.drafts[d.id] || "")}</textarea>
+<div class="row"><button class="pri" data-act="check" data-id="${d.id}">Cek</button>${hintBtn}
+<button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat contoh keluaran</button></div>`;
+  } else if (["sql", "fix", "build", "py"].includes(d.kind)) {
     const value = state.drafts[d.id] ?? d.start ?? "";
     body = `<label class="kbd" for="ed-${d.id}">Editor (Ctrl+Enter untuk menjalankan)</label>
-<textarea class="ed" id="ed-${d.id}" data-run="${d.id}" data-draft="${d.id}" spellcheck="false">${esc(value)}</textarea>
+<textarea class="ed${d.kind === "py" ? " py" : ""}" id="ed-${d.id}" data-run="${d.id}" data-draft="${d.id}" spellcheck="false">${esc(value)}</textarea>
 <div class="row"><button class="pri" data-act="check" data-id="${d.id}">Cek jawaban</button><button data-act="run" data-target="${d.id}">Jalankan saja</button>
 ${hintBtn}<button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat solusi</button>
 ${d.start ? `<button data-act="reset" data-id="${d.id}">Kembalikan kode awal</button>` : ""}</div>`;
@@ -31,7 +45,7 @@ ${d.start ? `<button data-act="reset" data-id="${d.id}">Kembalikan kode awal</bu
     body = `<div class="row"><label class="kbd" for="num-${d.id}">Jawabanmu</label><input class="numin" id="num-${d.id}" inputmode="decimal" placeholder="contoh: 1250">
 <button class="pri" data-act="check" data-id="${d.id}">Cek</button>${hintBtn}
 <button data-act="sol" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Lihat cara</button></div>
-<p class="kbd">Hitung dengan query di Ruang coba SQL, lalu tulis angkanya di sini.</p>`;
+<p class="kbd">${d.answerPy ? "Hitung dengan Python di Ruang coba Python" : "Hitung dengan query di Ruang coba SQL"}, lalu tulis angkanya di sini.</p>`;
   } else if (d.kind === "choice") {
     body = `<div class="opts">${d.options.map((o, i) => `<button class="opt" data-act="choice" data-id="${d.id}" data-i="${i}">${String.fromCharCode(65 + i)}. ${o}</button>`).join("")}</div>`;
   } else if (d.kind === "explain") {

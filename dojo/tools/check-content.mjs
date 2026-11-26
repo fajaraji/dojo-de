@@ -5,6 +5,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { sqlFeatures, KNOWN_FEATURES } from "./lib/sql-features.mjs";
+import { pyFeatures, isKnownPyFeature } from "./lib/py-features.mjs";
+import { writeData, prepare, runCode } from "../app/py-core.js";
+import { normalizeStdout } from "../app/drills.js";
 import { compareResults } from "../app/checker.js";
 import { TRACKED_TERMS } from "../content/terms.js";
 import { PG_PARSERS } from "../app/pg-options.js";
@@ -54,6 +57,29 @@ async function runTx(setup, sql) {
   }
 }
 
+// mesin Python (Pyodide versi Node), dinyalakan hanya kalau ada bab yang memakai Python
+let pyInst = null;
+async function pyBoot() {
+  const { loadPyodide } = await import("../vendor-npm/node_modules/pyodide/pyodide.mjs");
+  pyInst = await loadPyodide({ indexURL: path.join(here, "../vendor/pyodide-314.0.7/") + path.sep });
+  writeData(pyInst);
+}
+async function runPy(code, { setup = "" } = {}) {
+  if (!pyInst) await pyBoot();
+  let prep = await prepare(pyInst, setup + "\n" + code);
+  if (prep.restart) { await pyBoot(); prep = await prepare(pyInst, setup + "\n" + code); }
+  return runCode(pyInst, code, setup);
+}
+
+// kode di bab beserta bahasanya: contoh (sql/py/shell) dan soal
+const exampleCode = (ex) => ex.lang === "py" ? { lang: "py", code: ex.code } : ex.lang === "shell" ? null : { lang: "sql", code: ex.sql };
+function drillCodes(d) {
+  if (d.kind === "py") return [d.start, d.solution, d.check].filter(Boolean).map(code => ({ lang: "py", code }));
+  if (d.kind === "number" && d.answerPy) return [{ lang: "py", code: d.answerPy }];
+  if (d.kind === "paste") return [];
+  return [d.start, d.solution, d.answerSql].filter(Boolean).map(code => ({ lang: "sql", code }));
+}
+
 for (let i = 0; i < lessons.length; i++) {
   const L = lessons[i];
   if (only && L.id !== only) continue;
@@ -65,14 +91,14 @@ for (let i = 0; i < lessons.length; i++) {
   const base = PREREQ[L.id] ? LESSON_ORDER.indexOf(PREREQ[L.id]) : i - 1;
   const allowed = new Set(L.introduces || []);
   for (let j = 0; j <= base; j++) for (const f of lessons[j].introduces || []) allowed.add(f);
-  for (const f of L.introduces || []) if (!KNOWN_FEATURES.has(f)) report(L.id, `daftar introduces berisi "${f}" yang tidak dikenal pemeriksa`);
+  for (const f of L.introduces || []) if (!KNOWN_FEATURES.has(f) && !isKnownPyFeature(f)) report(L.id, `daftar introduces berisi "${f}" yang tidak dikenal pemeriksa`);
 
   const codes = [];
-  for (const s of L.sections || []) for (const ex of s.examples || []) codes.push(ex.sql);
-  for (const d of L.drills || []) codes.push(d.start, d.solution, d.answerSql);
+  for (const s of L.sections || []) for (const ex of s.examples || []) { const c = exampleCode(ex); if (c) codes.push(c); }
+  for (const d of L.drills || []) codes.push(...drillCodes(d));
   const flagged = new Set();
-  for (const code of codes.filter(Boolean)) {
-    for (const f of sqlFeatures(code)) {
+  for (const { lang, code } of codes.filter(c => c && c.code)) {
+    for (const f of lang === "py" ? pyFeatures(code) : sqlFeatures(code)) {
       if (allowed.has(f) || flagged.has(f)) continue;
       flagged.add(f);
       const at = taughtAt.get(f);
@@ -96,8 +122,15 @@ for (let i = 0; i < lessons.length; i++) {
   if (words < MIN_WORDS || words > MAX_WORDS) report(L.id, `teks penjelasan ${words} kata (harus ${MIN_WORDS}–${MAX_WORDS})`);
   for (const re of BANNED) if (re.test(text)) report(L.id, `memakai kata terlarang ${re.source.replace(/\\b/g, "")}`);
 
-  // contoh harus jalan dan menghasilkan tabel
+  // contoh harus jalan dan menghasilkan tabel (SQL) atau keluaran (Python); contoh shell hanya ditampilkan
   for (const s of L.sections || []) for (const ex of s.examples || []) {
+    if (ex.lang === "shell") { if (!ex.code) report(L.id, `contoh shell di "${s.title}" kosong`); continue; }
+    if (ex.lang === "py") {
+      const r = await runPy(ex.code, { setup: ex.setup || "" });
+      if (!r.ok) report(L.id, `contoh Python di "${s.title}" gagal: ${r.error.message}`);
+      else if (!ex.expectEmpty && !normalizeStdout(r.stdout)) report(L.id, `contoh Python di "${s.title}" tidak mencetak apa pun`);
+      continue;
+    }
     const r = await runTx(ex.setup, ex.sql);
     if (!r.ok) report(L.id, `contoh di "${s.title}" gagal: ${r.error}`);
     else if (!ex.expectEmpty && (!r.last || !r.last.rows.length)) report(L.id, `contoh di "${s.title}" tidak menghasilkan baris`);
@@ -124,6 +157,25 @@ for (let i = 0; i < lessons.length; i++) {
           if (st.ok && st.last && compareResults(st.last, sol.last, { ordered: !!d.ordered }).ok) report(tag, "query awal soal fix sudah memberi hasil yang benar");
         }
       }
+    } else if (d.kind === "py") {
+      if (!d.solution) { report(tag, "tidak punya solution"); continue; }
+      const r = await runPy(d.solution + (d.check ? "\n" + d.check : ""), { setup: d.setup || "" });
+      if (!r.ok) report(tag, `solusi Python gagal: ${r.error.message}`);
+      else if (!normalizeStdout(r.stdout)) report(tag, "solusi Python tidak mencetak apa pun (penilaian membandingkan keluaran print)");
+      if (d.start) {
+        const st = await runPy(d.start + (d.check ? "\n" + d.check : ""), { setup: d.setup || "" });
+        if (st.ok && r.ok && normalizeStdout(st.stdout) === normalizeStdout(r.stdout)) report(tag, "kode awal soal Python sudah memberi keluaran yang benar");
+      }
+    } else if (d.kind === "paste") {
+      if (!d.command) report(tag, "soal paste tidak punya command");
+      let re = null;
+      try { re = new RegExp(d.expect, "im"); } catch (e) { report(tag, `pola expect tidak valid: ${e.message}`); }
+      if (re && !d.sampleOutput) report(tag, "soal paste tidak punya sampleOutput untuk menguji pola");
+      else if (re && !re.test(d.sampleOutput)) report(tag, "pola expect tidak cocok dengan sampleOutput");
+    } else if (d.kind === "number" && d.answerPy) {
+      const r = await runPy(d.answerPy, { setup: d.setup || "" });
+      if (!r.ok) report(tag, `answerPy gagal: ${r.error.message}`);
+      else if (!Number.isFinite(Number(normalizeStdout(r.stdout))) || !normalizeStdout(r.stdout)) report(tag, "answerPy harus mencetak tepat satu angka");
     } else if (d.kind === "number") {
       const r = await runTx(d.setup, d.answerSql || "");
       if (!r.ok) report(tag, `answerSql gagal: ${r.error}`);

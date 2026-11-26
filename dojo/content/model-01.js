@@ -44,13 +44,13 @@ export default {
     { term: "1nf", def: "Bentuk normal pertama: setiap sel berisi satu nilai, tidak ada kolom berulang seperti produk_1, produk_2, dan setiap baris bisa dibedakan dengan kunci." },
     { term: "2nf", def: "Bentuk normal kedua: sudah 1NF, dan setiap kolom yang bukan kunci bergantung pada seluruh kunci, bukan hanya sebagian kunci gabungan." },
     { term: "3nf", def: "Bentuk normal ketiga: sudah 2NF, dan tidak ada kolom bukan kunci yang ditentukan oleh kolom bukan kunci lain (misalnya provinsi ditentukan oleh kota)." },
-    { term: "anomali update", def: "Data menjadi tidak konsisten karena satu fakta disimpan di banyak baris, lalu hanya sebagian baris yang diubah. Selain anomali saat mengubah, ada juga anomali saat menambah dan menghapus data." },
+    { term: "anomali update", def: "Data menjadi tidak konsisten karena satu fakta disimpan di banyak baris, lalu hanya sebagian baris yang diubah. Tabel seperti itu juga bermasalah saat menambah dan menghapus data, seperti contoh di bab ini." },
     { term: "gudang data", def: "<i>Data warehouse</i>: database khusus analisis yang mengumpulkan data dari banyak sumber, merapikannya, dan menyimpan riwayatnya." },
     { term: "data mart", def: "Bagian gudang data yang disiapkan untuk satu tim atau satu topik, misalnya ringkasan penjualan untuk tim keuangan." },
     { term: "lapisan raw/staging/core/mart", def: "Urutan tempat data di gudang data: raw (mentah, apa adanya), staging (sudah dirapikan per sumber), core (sudah digabung dan konsisten antar sumber), mart (siap dipakai tim tertentu)." },
-    { term: "medallion", def: "Nama lain untuk pembagian lapisan data, memakai nama medali: bronze (perunggu, data mentah), silver (perak, data yang sudah dibersihkan), gold (emas, data siap dipakai laporan)." },
-    { term: "etl", def: "<i>Extract, Transform, Load</i>: data diambil dari sumber, diubah dan dibersihkan di luar gudang data, lalu dimuat ke gudang data dalam keadaan sudah rapi." },
-    { term: "elt", def: "<i>Extract, Load, Transform</i>: data diambil dari sumber dan dimuat apa adanya ke gudang data, lalu dibersihkan dengan SQL di dalam gudang data." },
+    { term: "medallion", def: "Pembagian lapisan data yang memakai nama medali: bronze (perunggu, data mentah yang disimpan persis seperti saat datang), silver (perak, data yang sudah diperbaiki dan diseragamkan), gold (emas, data yang disusun untuk laporan)." },
+    { term: "etl", def: "<i>Extract, Transform, Load</i>: data diambil dari sumber, diubah dan dibersihkan sebelum dimuat, lalu dimuat ke gudang data dalam keadaan sudah rapi." },
+    { term: "elt", def: "<i>Extract, Load, Transform</i>: data diambil dari sumber dan dimuat apa adanya ke gudang data, lalu diubah di tempat data itu disimpan, misalnya dengan SQL di dalam gudang data." },
   ],
   introduces: [],
   sections: [
@@ -71,7 +71,7 @@ export default {
 <tr><td>Bentuk perintah</td><td>menambah, mengubah, membaca sedikit baris</td><td>membaca dan meringkas banyak baris</td></tr>
 <tr><td>Data yang disimpan</td><td>keadaan terbaru</td><td>riwayat, sering bertahun-tahun</td></tr>
 <tr><td>Susunan tabel</td><td>ternormalisasi (dibahas di bawah)</td><td>disusun supaya mudah dibaca dan diringkas</td></tr></table></div>
-<p>Query analisis yang berat sebaiknya tidak dijalankan langsung di database aplikasi, karena bisa memperlambat aplikasi yang sedang melayani pelanggan. Itulah alasan utama data disalin ke database terpisah untuk analisis.</p>`,
+<p>Query analisis yang berat sebaiknya tidak dijalankan langsung di database aplikasi, karena bisa memperlambat aplikasi yang sedang melayani pelanggan. Itu salah satu alasan data disalin ke database terpisah untuk analisis.</p>`,
       examples: [{ sql: "select date_trunc('month', order_ts)::date as bulan, channel, count(*) as pesanan\nfrom app.orders\nwhere order_ts >= '2025-01-01'\ngroup by date_trunc('month', order_ts), channel\norder by bulan, channel;", note: "Query khas analisis: membaca semua 5.620 pesanan sejak 1 Januari 2025, lalu meringkasnya menjadi satu baris per bulan per channel." }],
     },
     {
@@ -101,7 +101,7 @@ app.staff.manager_id      merujuk ke app.staff      (atasan langsung)</code></pr
       html: `<p><b>Normalisasi</b> adalah cara menyusun tabel supaya setiap fakta disimpan tepat di satu tempat. Contohnya, kota tempat tinggal pelanggan hanya disimpan sekali di <code>app.customers</code>, bukan disalin ke setiap pesanannya.</p>
 <p>Untuk melihat kenapa ini penting, contoh di bawah memakai tabel tiruan <code>latihan.pesanan_lebar</code>. Tabel ini dibuat oleh bagian <code>setup</code> (perintah persiapan yang dijalankan sebelum query, lalu dibatalkan bersama query). Isinya 87 pesanan milik pelanggan nomor 1 sampai 10, dan setiap barisnya membawa salinan nama, kota, dan provinsi pelanggan. Tabel yang menyalin data dari banyak tabel ke satu tabel seperti ini disebut tabel lebar atau tabel <i>denormal</i> (tidak ternormalisasi).</p>
 <p>Lalu disimulasikan dua kesalahan yang biasa terjadi. Pelanggan nomor 3 pindah ke Malang, tapi kotanya hanya diubah di 6 pesanan sejak 1 Juni 2025; 15 pesanan lainnya masih Surabaya. Satu pesanan pelanggan nomor 9 diubah kotanya menjadi Medan, tapi provinsinya tetap Sumatera Selatan. Kesalahan seperti ini disebut <b>anomali update</b>: satu fakta disimpan di banyak baris, lalu hanya sebagian yang diubah. Akibatnya, pertanyaan "pelanggan 3 tinggal di mana?" punya dua jawaban.</p>
-<p>Ada dua anomali lain. <b>Anomali tambah</b>: pelanggan baru yang belum memesan tidak bisa dicatat, karena setiap baris harus berupa pesanan. <b>Anomali hapus</b>: pelanggan nomor 5 hanya punya 1 pesanan; kalau pesanan itu dihapus, nama dan kotanya ikut hilang.</p>`,
+<p>Tabel ini juga bermasalah saat menambah dan menghapus data. Saat menambah: pelanggan baru yang belum memesan tidak bisa dicatat, karena setiap baris harus berupa pesanan. Saat menghapus: pelanggan nomor 5 hanya punya 1 pesanan; kalau pesanan itu dihapus, nama dan kotanya ikut hilang.</p>`,
       examples: [{ setup: SETUP_LEBAR, sql: "select customer_id, nama_pelanggan, count(*) as baris, count(distinct kota) as jumlah_kota\nfrom latihan.pesanan_lebar\ngroup by customer_id, nama_pelanggan\norder by customer_id;", note: "Pelanggan nomor 3 dan 9 punya dua kota. Di app.customers, setiap pelanggan hanya punya satu city_id, jadi anomali ini tidak mungkin terjadi di sana." }],
     },
     {
@@ -143,8 +143,8 @@ app.staff.manager_id      merujuk ke app.staff      (atasan langsung)</code></pr
 <li><b>Staging</b> (tahap persiapan): data dari satu sumber dirapikan. Spasi dibuang, huruf diseragamkan, teks diubah ke tipe yang benar. Setelah TRIM dan UPPER, lima tulisan nama pemasok tadi menjadi tiga.</li>
 <li><b>Core</b> (inti): data dari berbagai sumber disatukan dan dibuat konsisten. Contohnya, kode produk dari berkas pemasok dicocokkan dengan <code>app.products</code>. Dari 61 baris berkas, 57 cocok dengan produk di <code>app.products</code>; 4 baris berkode TK-99000, TK-99013, TK-99026, dan TK-99039 tidak ada di sana.</li>
 <li><b>Mart</b>: tabel siap pakai untuk satu tim, misalnya jumlah pesanan per bulan per channel seperti contoh di bagian OLAP.</li></ol>
-<p>Pembagian yang sama juga dikenal dengan nama <b>medallion</b> (medali), yang dipakai antara lain di Microsoft Fabric (layanan analisis data milik Microsoft): <i>bronze</i> (perunggu) untuk data mentah, <i>silver</i> (perak) untuk data yang sudah dibersihkan dan disatukan, dan <i>gold</i> (emas) untuk data siap laporan. Kira-kira, bronze sama dengan raw, silver mencakup staging dan core, dan gold sama dengan mart.</p>
-<p>Aturan terpenting tetap sama dengan bab membersihkan data mentah: lapisan raw tidak pernah ditimpa. Kalau aturan pembersihan ternyata salah, lapisan berikutnya bisa dibangun ulang dari raw.</p>`,
+<p>Pembagian yang mirip dikenal dengan nama arsitektur <b>medallion</b> (medali), yang dipakai antara lain di Microsoft Fabric (layanan analisis data milik Microsoft). Menurut dokumentasi Fabric, lapisannya tiga: <i>bronze</i> (perunggu) menyimpan data persis seperti saat datang, tanpa diubah; <i>silver</i> (perak) memperbaiki kesalahan, menyeragamkan format, dan membuang duplikat; <i>gold</i> (emas) menyusun data untuk laporan. Kira-kira, bronze sama dengan raw, silver mencakup staging dan core, dan gold sama dengan mart. Kata "kira-kira" penting: kedua pembagian ini mirip, tetapi tidak persis sama.</p>
+<p>Aturan terpenting tetap sama dengan bab membersihkan data mentah: lapisan raw tidak pernah ditimpa. Dokumentasi Fabric menulis hal yang sama untuk bronze: salinan aslinya disimpan sebagai acuan utama. Kalau aturan pembersihan ternyata salah, lapisan berikutnya bisa dibangun ulang dari raw.</p>`,
       examples: [
         { sql: "select supplier, upper(trim(supplier)) as pemasok_rapi, count(*) as baris\nfrom raw.supplier_price_upload\ngroup by supplier, upper(trim(supplier))\norder by pemasok_rapi, supplier;", note: "Kolom pertama isi lapisan raw, kolom kedua hasil perapian di lapisan staging." },
         { sql: "select u.row_no, upper(trim(u.supplier)) as pemasok,\n       'TK-' || substring(replace(upper(trim(u.sku_text)), '-', '') from 3) as sku,\n       p.product_id, p.product_name\nfrom raw.supplier_price_upload u\nleft join app.products p\n  on p.sku = 'TK-' || substring(replace(upper(trim(u.sku_text)), '-', '') from 3)\norder by u.row_no;", note: "Langkah ke lapisan core: kode yang sudah dirapikan dicocokkan dengan app.products. Baris 51 sampai 54 tidak menemukan pasangan, sehingga product_id-nya NULL." },
@@ -153,28 +153,28 @@ app.staff.manager_id      merujuk ke app.staff      (atasan langsung)</code></pr
     {
       title: "ETL dan ELT",
       html: `<p>Proses memindahkan data dari sumber ke gudang data punya tiga langkah: <i>extract</i> (mengambil data dari sumber), <i>transform</i> (mengubah dan membersihkan), dan <i>load</i> (memuat ke gudang data). Urutannya ada dua:</p>
-<ul><li><b>ETL</b> (<i>Extract, Transform, Load</i>): data dibersihkan di luar gudang data, misalnya dengan program Python (bahasa pemrograman) atau alat khusus, lalu dimuat dalam keadaan sudah rapi. Gudang data tidak menyimpan versi mentahnya.</li>
-<li><b>ELT</b> (<i>Extract, Load, Transform</i>): data dimuat apa adanya ke lapisan raw, lalu dibersihkan dengan SQL di dalam gudang data. Versi mentahnya tetap tersimpan, sehingga pembersihan bisa diulang kapan saja.</li></ul>
-<p>Data latihan TokoKita disusun dengan pola ELT: berkas pemasok dan ekstrak susulan <code>raw.orders_batch2</code> (pesanan baru dan pesanan yang berubah status, diterima awal November 2025) sudah dimuat apa adanya ke skema <code>raw</code>, dan kamu merapikannya dengan query seperti di bab ini. ETL tetap dipakai, misalnya kalau sebagian data tidak boleh masuk gudang data sama sekali, sehingga harus disaring lebih dulu.</p>`,
+<ul><li><b>ETL</b> (<i>Extract, Transform, Load</i>): data diubah sebelum dimuat, misalnya dengan program Python (bahasa pemrograman) atau alat khusus, lalu dimuat dalam keadaan sudah rapi. Yang masuk ke gudang data adalah hasil yang sudah diubah.</li>
+<li><b>ELT</b> (<i>Extract, Load, Transform</i>): data dimuat apa adanya ke lapisan raw, lalu diubah di tempat data itu disimpan, misalnya dengan SQL di dalam gudang data. Versi mentahnya tetap tersimpan, sehingga pembersihan bisa diulang kapan saja.</li></ul>
+<p>Data latihan TokoKita disusun dengan pola ELT: berkas pemasok dan ekstrak susulan <code>raw.orders_batch2</code> (pesanan baru dan pesanan yang berubah status, diterima awal November 2025) sudah dimuat apa adanya ke skema <code>raw</code>, dan kamu merapikannya dengan query seperti di bab ini. ETL tetap dipakai, misalnya kalau data perlu dibersihkan atau diseragamkan selagi dipindahkan. Dokumentasi Microsoft Fabric menyebut kedua cara bisa dipakai, bahkan digabung dalam satu solusi.</p>`,
     },
   ],
   tsql: [
-    { pg: "Skema bawaan: public", tsql: "Skema bawaan: dbo", note: "Di PostgreSQL, tabel yang dibuat tanpa nama skema masuk ke skema public. Di SQL Server, nama tanpa skema dicari di skema bawaan pengguna; kalau tidak bisa ditentukan, dipakai dbo. Tulis selalu nama skemanya, di kedua database." },
+    { pg: "Skema bawaan: public", tsql: "Skema bawaan: dbo", note: "Di PostgreSQL, tabel yang dibuat tanpa nama skema masuk ke skema pertama yang ada di search_path (daftar skema yang dicari); dengan pengaturan bawaan, biasanya skema public. Di SQL Server, nama tanpa skema dicari dulu di skema bawaan pengguna, lalu di dbo; pengguna yang skema bawaannya tidak bisa ditentukan memakai dbo. Tulis selalu nama skemanya, di kedua database." },
     { pg: "app.orders (hanya di database yang sedang tersambung)", tsql: "NamaDatabase.app.orders", note: "SQL Server menerima nama tiga bagian (database.skema.tabel) untuk database lain di server yang sama, sehingga lapisan bisa dipisah per database dan tetap di-query bersama. PostgreSQL hanya menerima nama database yang sama dengan database yang sedang tersambung, jadi lapisan dipisah per skema, seperti app dan raw." },
     { pg: "text", tsql: "varchar(max) atau nvarchar(max)", note: "SQL Server juga punya tipe bernama text, tapi tipe itu akan dihapus di versi mendatang. Jangan dipakai untuk tabel baru." },
     { pg: "numeric(12,2)", tsql: "decimal(12,2) atau numeric(12,2)", note: "Di SQL Server, decimal dan numeric adalah dua nama untuk tipe yang sama." },
     { pg: "boolean", tsql: "bit", note: "bit berisi 1, 0, atau NULL. Teks 'TRUE' dan 'FALSE' diubah menjadi 1 dan 0." },
     { pg: "timestamp", tsql: "datetime2", note: "Hati-hati: timestamp di SQL Server adalah nama lain rowversion, yaitu nomor urut perubahan baris, bukan tanggal dan jam. Untuk tanggal dan jam, pakai datetime2." },
-    { pg: "ETL atau ELT dengan SQL biasa", tsql: "SQL biasa, atau SSIS (SQL Server Integration Services)", note: "SSIS adalah alat Microsoft untuk mengambil, mengubah, dan memuat data, termasuk memuat gudang data. Dipasang lewat instalasi SQL Server." },
+    { pg: "ETL atau ELT dengan SQL biasa", tsql: "SQL biasa, atau SSIS (SQL Server Integration Services)", note: "SSIS adalah alat Microsoft untuk mengambil, mengubah, dan memuat data, termasuk memuat gudang data. Di Windows, SSIS dipasang lewat program instalasi SQL Server; alat untuk merancang alur SSIS tidak ikut terpasang dan dipasang terpisah." },
   ],
   summary: [
     "OLTP melayani aplikasi: banyak perintah kecil, menyimpan keadaan terbaru. OLAP melayani analisis: query yang membaca dan meringkas banyak baris, memakai riwayat.",
     "Diagram ER menunjukkan relasi antar tabel. Buktikan relasinya dengan data: <code>count(*)</code> lawan <code>count(distinct …)</code>, dan GROUP BY dengan HAVING.",
     "Normalisasi menyimpan setiap fakta di satu tempat. 1NF: satu nilai per sel. 2NF: tidak bergantung pada sebagian kunci gabungan. 3NF: tidak ada kolom yang ditentukan kolom bukan kunci lain.",
-    "Tabel lebar menyalin fakta ke banyak baris, sehingga rawan anomali update, tambah, dan hapus.",
+    "Tabel lebar menyalin fakta ke banyak baris, sehingga rawan anomali update dan bermasalah saat menambah atau menghapus data.",
     "Gudang data mengumpulkan, merapikan, dan menyimpan riwayat data dari banyak sumber. Data mart adalah bagiannya untuk satu tim atau topik.",
-    "Lapisan raw → staging → core → mart, atau bronze → silver → gold. Lapisan raw tidak pernah ditimpa.",
-    "ETL membersihkan sebelum memuat; ELT memuat data mentah dulu, lalu membersihkannya dengan SQL di gudang data.",
+    "Lapisan raw → staging → core → mart, kira-kira sepadan dengan bronze → silver → gold. Lapisan raw tidak pernah ditimpa.",
+    "ETL membersihkan sebelum memuat; ELT memuat data mentah dulu, lalu membersihkannya di gudang data, misalnya dengan SQL.",
   ],
   drills: [
     { id: "model-01-01", kind: "choice", prompt: `Tabel berikut melanggar bentuk normal yang mana?<div class="tw"><table class="t"><tr><th>order_id</th><th>daftar_sku</th></tr><tr><td>100001</td><td>TK-10518, TK-10175</td></tr><tr><td>100004</td><td>TK-10329</td></tr></table></div>`,

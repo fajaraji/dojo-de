@@ -121,7 +121,7 @@ ERROR 42P20: window functions are not allowed in WHERE</code></pre>
     { pg: "row_number(), rank(), dense_rank() bertipe bigint", tsql: "bertipe bigint", note: "Sama di keduanya." },
     { pg: "avg(qty) over (…) menghasilkan numeric", tsql: "AVG(qty) OVER (…) menghasilkan int", note: "Sama seperti AVG biasa di bab 5: di SQL Server, AVG kolom int menghasilkan int. Ubah tipenya dulu, misalnya AVG(qty * 1.0) OVER (…)." },
     { pg: "ERROR 42P20: window functions are not allowed in WHERE", tsql: "Msg 4108: Windowed functions can only appear in the SELECT or ORDER BY clauses.", note: "Aturannya sama, dan cara mengatasinya juga sama: hitung di subquery atau CTE, lalu saring di query luar." },
-    { pg: "count(distinct x) over (…) → ERROR 0A000: DISTINCT is not implemented for window functions", tsql: "COUNT(DISTINCT x) OVER (…) juga ditolak", note: "Keduanya tidak membolehkan DISTINCT di dalam fungsi agregasi yang memakai OVER." },
+    { pg: "count(distinct x) over (…) → ERROR 0A000: DISTINCT is not implemented for window functions", tsql: "COUNT(DISTINCT x) OVER (…) juga ditolak", note: "Dokumentasi OVER di SQL Server menyatakan OVER tidak bisa dipakai dengan agregasi DISTINCT. PostgreSQL 18 juga menolaknya, dengan pesan di kolom kiri." },
   ],
   summary: [
     "Window function menghitung nilai untuk setiap baris dari jendelanya, tanpa meringkas baris. Ditulis dengan <code>OVER (…)</code>; <code>OVER ()</code> berarti seluruh hasil query.",

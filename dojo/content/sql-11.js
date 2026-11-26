@@ -123,7 +123,7 @@ export default {
     { pg: "ini.bulan - interval '1 year'", tsql: "dateadd(year, -1, ini.bulan)", note: "Di PostgreSQL, date dikurangi interval menghasilkan timestamp. DATEADD menghasilkan tipe yang sama dengan masukannya. Keduanya memakai tanggal terakhir bulan tujuan kalau tanggal aslinya tidak ada di bulan itu, misalnya 31 Agustus + 1 bulan = 30 September." },
     { pg: "(extract(year from b) - extract(year from a)) * 12 + extract(month from b) - extract(month from a)", tsql: "datediff(month, a, b)", note: "DATEDIFF menghitung berapa batas bulan yang dilewati, bukan jumlah bulan penuh: dari 31 Desember ke 1 Januari hasilnya 1. Untuk tanggal 1 di setiap bulan, seperti di query kohort, hasilnya sama dengan rumus PostgreSQL." },
     { pg: "lag(nilai) over (order by bulan)", tsql: "lag(nilai) over (order by bulan)", note: "Sama, termasuk angka jarak baris dan nilai pengganti: lag(nilai, 12, 0). Di SQL Server, ORDER BY di dalam OVER wajib untuk LAG." },
-    { pg: "count(*) filter (where bulan_ke = 1)", tsql: "count(case when bulan_ke = 1 then 1 end)", note: "SQL Server tidak punya FILTER (bab 5)." },
+    { pg: "count(*) filter (where bulan_ke = 1)", tsql: "count(case when bulan_ke = 1 then 1 end)", note: "Tata bahasa COUNT di dokumentasi SQL Server tidak memuat FILTER (bab 5)." },
     { pg: "x / nullif(y, 0)", tsql: "x / nullif(y, 0)", note: "Sama. Dengan pengaturan bawaan (ANSI_WARNINGS ON), pembagian dengan nol di SQL Server juga menghentikan query. Pembagian dua bilangan bulat juga membuang angka di belakang koma, jadi tetap kalikan dengan 100.0." },
   ],
   summary: [

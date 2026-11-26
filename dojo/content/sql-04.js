@@ -69,7 +69,7 @@ export default {
     },
     {
       title: "DATE_TRUNC dan EXTRACT",
-      html: `<p><code>DATE_TRUNC('satuan', x)</code> memotong tanggal ke awal satuan itu. <code>date_trunc('month', order_ts)</code> mengubah semua pesanan bulan Maret menjadi tanggal 1 Maret jam 00:00. Inilah cara standar untuk melaporkan data per bulan. Satuan lain: <code>'year'</code>, <code>'quarter'</code>, <code>'week'</code>, dan <code>'day'</code>. Untuk kolom bertipe timestamp seperti <code>order_ts</code>, hasilnya juga bertipe timestamp; tambahkan <code>::date</code> kalau hanya butuh tanggal.</p>
+      html: `<p><code>DATE_TRUNC('satuan', x)</code> memotong tanggal ke awal satuan itu. <code>date_trunc('month', order_ts)</code> mengubah semua pesanan bulan Maret menjadi tanggal 1 Maret jam 00:00. Fungsi ini dipakai untuk melaporkan data per bulan. Satuan lain: <code>'year'</code>, <code>'quarter'</code>, <code>'week'</code>, dan <code>'day'</code>. Untuk kolom bertipe timestamp seperti <code>order_ts</code>, hasilnya juga bertipe timestamp; tambahkan <code>::date</code> kalau hanya butuh tanggal.</p>
 <p><code>EXTRACT(bagian FROM x)</code> mengambil satu bagian sebagai angka: <code>year</code>, <code>month</code>, <code>day</code>, <code>hour</code>, atau <code>dow</code> (hari dalam minggu: 0 = Minggu sampai 6 = Sabtu).</p>`,
       examples: [{ sql: "select order_id, order_ts,\n       date_trunc('month', order_ts)::date as bulan,\n       extract(year from order_ts) as tahun,\n       extract(hour from order_ts) as jam,\n       extract(dow from order_ts) as hari_ke\nfrom app.orders\nwhere order_id between 100001 and 100008;", note: "Semua pesanan di bulan yang sama mendapat nilai bulan yang sama. Itu sebabnya DATE_TRUNC dipakai untuk mengelompokkan data per bulan." }],
     },
@@ -77,7 +77,7 @@ export default {
       title: "TO_CHAR dan TO_DATE: tanggal ↔ teks",
       html: `<p><code>TO_CHAR(tanggal, 'pola')</code> mengubah tanggal menjadi teks dengan format tertentu. Pola yang umum: <code>YYYY</code> (tahun), <code>MM</code> (bulan dua digit), <code>DD</code> (tanggal), dan <code>HH24:MI</code> (jam dan menit). Contohnya <code>to_char(order_ts, 'YYYY-MM')</code> menghasilkan teks seperti 2025-10.</p>
 <p><code>TO_DATE(teks, 'pola')</code> kebalikannya: membaca teks menjadi tanggal. Fungsi ini dibutuhkan untuk data mentah yang memakai format selain ISO, misalnya <code>to_date('29/09/2025', 'DD/MM/YYYY')</code>.</p>
-<p>Simpan dan bandingkan tanggal sebagai tipe <code>date</code> atau <code>timestamp</code>, bukan sebagai teks. Sebagai teks, '01/12/2024' dianggap lebih kecil dari '15/02/2023', karena teks dibandingkan huruf demi huruf dari kiri. Pakai TO_CHAR hanya untuk tampilan akhir.</p>`,
+<p>Simpan dan bandingkan tanggal sebagai tipe <code>date</code> atau <code>timestamp</code>, bukan sebagai teks. Sebagai teks, '01/12/2024' dianggap lebih kecil dari '15/02/2023', karena keduanya dibandingkan sebagai teks, bukan sebagai tanggal. Kamu bisa membuktikannya sendiri: <code>select '01/12/2024' &lt; '15/02/2023'</code> menghasilkan true. Pakai TO_CHAR hanya untuk tampilan akhir.</p>`,
       examples: [{ sql: "select order_ts,\n       to_char(order_ts, 'YYYY-MM') as bulan_teks,\n       to_char(order_ts, 'DD/MM/YYYY HH24:MI') as format_indonesia,\n       to_date('29/09/2025', 'DD/MM/YYYY') as dari_teks\nfrom app.orders\nwhere order_id = 100001;", note: "Dua kolom TO_CHAR berupa teks; kolom terakhir berupa tanggal." }],
     },
     {
@@ -104,8 +104,8 @@ export default {
     { pg: "length(x)", tsql: "len(x)", note: "LEN di SQL Server tidak menghitung spasi di akhir teks." },
     { pg: "a || b", tsql: "a + b, atau concat(a, b); a || b mulai SQL Server 2025", note: "Dengan + dan ||, hasilnya NULL kalau salah satu bagiannya NULL. CONCAT menganggap NULL sebagai teks kosong, sama seperti di PostgreSQL." },
     { pg: "position('@' in email)", tsql: "charindex('@', email)", note: "Sama-sama menulis teks yang dicari lebih dulu; CHARINDEX memakai koma, bukan IN." },
-    { pg: "split_part(email, '@', 2)", tsql: "substring(email, charindex('@', email) + 1, len(email))", note: "SQL Server tidak punya SPLIT_PART. STRING_SPLIT ada, tapi menghasilkan baris, bukan kolom." },
-    { pg: "now(), current_date", tsql: "getdate(), cast(getdate() as date)", note: "Mulai SQL Server 2025, current_date juga tersedia. getdate() tidak menyertakan zona waktu, sedangkan now() di PostgreSQL bertipe timestamptz." },
+    { pg: "split_part(email, '@', 2)", tsql: "substring(email, charindex('@', email) + 1, len(email))", note: "Dokumentasi fungsi teks SQL Server tidak memuat SPLIT_PART. STRING_SPLIT ada, tapi menghasilkan baris, bukan kolom." },
+    { pg: "now(), current_date", tsql: "getdate(), cast(getdate() as date)", note: "Dokumentasi T-SQL terbaru juga memuat current_date (hasilnya bertipe date); kalau SQL Server tempatmu bekerja belum mengenalnya, pakai cast(getdate() as date). getdate() bertipe datetime dan tidak menyertakan zona waktu, sedangkan now() di PostgreSQL bertipe timestamptz." },
     { pg: "order_ts + interval '3 days'", tsql: "dateadd(day, 3, order_ts)", note: "" },
     { pg: "tanggal_b - tanggal_a", tsql: "datediff(day, tanggal_a, tanggal_b)", note: "Di SQL Server, nilai bertipe date tidak bisa dikurangi dengan tanda minus. Pakai DATEDIFF untuk mendapat jumlah hari." },
     { pg: "date_trunc('month', x)", tsql: "datetrunc(month, x), atau datefromparts(year(x), month(x), 1)", note: "DATETRUNC baru ada sejak SQL Server 2022." },
@@ -118,7 +118,7 @@ export default {
     "<code>TRIM</code>, <code>UPPER</code>/<code>LOWER</code>, dan <code>REPLACE</code> adalah alat utama untuk menyeragamkan teks.",
     "<code>||</code> menghasilkan NULL kalau ada bagian yang NULL; <code>CONCAT</code> menganggap NULL sebagai teks kosong.",
     "Tanggal dikurangi tanggal menghasilkan jumlah hari; tambahkan <code>interval</code> untuk menggeser tanggal.",
-    "<code>DATE_TRUNC('month', x)</code> adalah cara standar mengelompokkan per bulan; <code>EXTRACT</code> mengambil satu bagian tanggal sebagai angka.",
+    "<code>DATE_TRUNC('month', x)</code> dipakai untuk mengelompokkan per bulan; <code>EXTRACT</code> mengambil satu bagian tanggal sebagai angka.",
     "Bandingkan tanggal sebagai tanggal, bukan teks. Pakai <code>TO_DATE</code> untuk membaca format lain, dan <code>TO_CHAR</code> hanya untuk tampilan.",
     "Bersihkan data mentah selangkah demi selangkah, dan jangan pernah menimpa data aslinya.",
   ],

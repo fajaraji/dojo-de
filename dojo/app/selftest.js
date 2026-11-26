@@ -47,3 +47,29 @@ export async function selfTest(engine) {
     `${end.ok ? "END tidak ditolak" : "ditolak: " + end.error.message}; sesudahnya ${n3} baris (seharusnya ${payExpected})`);
   return out;
 }
+
+/** Uji mandiri mesin Python (Pyodide): menyala, pandas membaca data TokoKita, dan perulangan tanpa ujung dihentikan. */
+export async function selfTestPython(py) {
+  const out = [];
+  const add = (name, ok, detail) => out.push({ name, ok, detail });
+  const t0 = performance.now();
+  try {
+    await py.ready();
+    const ms = Math.round(performance.now() - t0);
+    add("6. Mesin Python siap dalam waktu kurang dari 30 detik", ms < 30000, `${ms} ms`);
+  } catch (e) {
+    add("6. Mesin Python siap dalam waktu kurang dari 30 detik", false, String(e && e.message || e));
+    return out;
+  }
+  const expected = generate().tables["app.orders"].rows.length;
+  const r = await py.run("import pandas as pd\nprint(len(pd.read_csv('/data/app/orders.csv')))");
+  const n = r.ok ? Number(r.stdout.trim()) : null;
+  add("7. pandas membaca /data/app/orders.csv dengan jumlah baris yang sama", n === expected, r.ok ? `${n} (seharusnya ${expected})` : "gagal: " + r.error.message);
+  const t1 = performance.now();
+  const loop = await py.run("while True:\n    pass");
+  const after = await py.run("print('hidup')");
+  add("8. Perulangan tanpa ujung dihentikan, lalu mesin Python bisa dipakai lagi",
+    loop.ok === false && loop.timedOut === true && after.ok && after.stdout.trim() === "hidup",
+    `berhenti setelah ${Math.round(performance.now() - t1)} ms; kode berikutnya ${after.ok ? "berhasil" : "gagal: " + after.error.message}`);
+  return out;
+}

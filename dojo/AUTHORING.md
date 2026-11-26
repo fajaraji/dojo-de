@@ -45,6 +45,32 @@ Orang yang baru masuk dunia data, target akhirnya siap kerja sebagai data engine
 2. Kamu sudah membaca ulang bab: setiap istilah dijelaskan saat pertama muncul, tidak ada rujukan maju, setiap angka di teks berasal dari query.
 3. Laporan akhirmu memuat: jumlah kata, jumlah soal per jenis, daftar fakta PostgreSQL/SQL Server yang kamu cek beserta URL dokumentasinya, dan keputusan yang menyimpang dari tiket (kalau ada) beserta alasannya.
 
+## Tambahan untuk Bagian 3–8 (alat kerja, Python, pipeline, cloud, lanjutan, karier)
+Rencana: `D:\de-practice\docs\superpowers\plans\2026-11-26-dojo-bagian-3-8.md` (cari tiket babmu).
+
+- **Context7 WAJIB untuk setiap klaim tentang alat.** Ini berlaku untuk Python, pandas, pyarrow, pytest, Git, GitHub Actions, Docker, PostgreSQL, SQL Server, Airflow, dbt, Spark, Delta Lake, Microsoft Fabric, Power BI, Kafka, Terraform, AWS, GCP, dan alat lain. Caranya: muat tool dengan ToolSearch (`select:mcp__plugin_context7_context7__resolve-library-id,mcp__plugin_context7_context7__query-docs`), cari library ID resmi (Source Reputation High), lalu tanyakan satu konsep per query.
+  - **Kalau Context7 tidak bisa dipakai, BERHENTI dan laporkan.** Jangan diganti dengan WebFetch, curl, atau ingatan.
+  - Laporan akhir mencantumkan library ID dan URL sumber yang dikembalikan Context7 untuk setiap fakta penting.
+- **Contoh** (`sections[].examples[]`) punya `lang`:
+  - `{ lang: "py", code, note, setup? }`: dijalankan di Python (Pyodide, Python 3.14, pandas 3.0.2, numpy, pyarrow 22, pytest 9). Harus mencetak sesuatu dengan `print()`.
+  - `{ lang: "shell", code, note }`: perintah untuk laptop pengguna, hanya ditampilkan dengan tombol salin. Tulis untuk **PowerShell di Windows 11**. Padanan bash/Linux boleh disebut di teks.
+  - Tanpa `lang`: SQL seperti sebelumnya (`sql`).
+- **Data di Python:** TokoKita tersedia sebagai CSV di `/data/app/<tabel>.csv` dan `/data/raw/<tabel>.csv`, isinya sama dengan database SQL. Folder kerja yang boleh ditulisi adalah `/kerja`. Uji dengan `node tools/check-content.mjs --lesson <id>` (menjalankan Python di Node). Untuk mencoba cepat, buat skrip Node kecil yang memakai `app/py-core.js` (lihat fungsi `runPy` di `tools/check-content.mjs`).
+- **Soal `py`:** `{ kind: "py", prompt, start?, solution, setup?, check?, why, hint }`.
+  - Penilaian membandingkan keluaran `print` jawaban dengan solusi. Spasi di akhir baris diabaikan.
+  - Prompt WAJIB menyebut persis apa yang dicetak, termasuk format dan urutannya.
+  - Kalau `check` diisi, kode itu dijalankan sesudah jawaban di namespace yang sama, dan keluarannya yang dibandingkan. Cara ini cocok untuk memeriksa isi variabel atau fungsi buatan pengguna.
+  - Setiap soal berdiri sendiri; variabel dari soal lain tidak terbawa.
+- **Soal `paste`** (dikerjakan di laptop): `{ kind: "paste", prompt, command, expect, sampleOutput, why, hint }`.
+  - `expect` adalah regex (tanpa membedakan huruf besar/kecil, multibaris) untuk keluaran yang ditempel pengguna.
+  - `sampleOutput` adalah contoh keluaran benar yang realistis, dan dipakai pemeriksa untuk menguji `expect`.
+  - Pola harus longgar terhadap versi atau path, tapi tetap membuktikan perintahnya berhasil.
+- **Soal `number` dengan Python:** `answerPy` (kode yang mencetak satu angka), sebagai pengganti `answerSql`.
+- **Fitur Python dilacak** seperti perintah SQL. Nama fiturnya ada di `tools/lib/py-features.mjs`, misalnya `py:for`, `py:print()`, `py:import pandas`, `py:f-string`, `py:comprehension`. `introduces` di kerangka setiap bab Python sudah ditentukan. Jangan memakai fitur yang belum diajarkan, dan pertahankan isi `introduces` kerangka.
+- **Jumlah soal bab non-SQL:** minimal 10. Jenisnya campuran: minimal 2 `choice`, minimal 1 `explain`, minimal 1 `level: "wawancara"`, dan sisanya `py`, `paste`, atau `sql` sesuai topik. Bab konsep (cloud, lanjutan, karier) boleh lebih banyak `choice`/`explain`, tapi tetap ada latihan praktik kalau memungkinkan.
+- **Bagian `tsql`** hanya diisi kalau relevan. Bab lain boleh `tsql: []`.
+- **Lingkungan pengguna:** Windows 11 + PowerShell. Pengguna sedang mengejar sertifikasi **DP-700 (Microsoft Fabric Data Engineer)** sebelum 31 Des 2026 dan mengincar kerja remote untuk perusahaan UK. Kaitkan materi dengan keduanya kalau relevan, tanpa memaksakan.
+
 ## Jangan
 - Jangan mengubah berkas selain `content/<id-babmu>.js`. Kalau butuh nama fitur baru di `sql-features.mjs`, istilah baru di `terms.js`, atau perubahan aplikasi, tulis kebutuhannya di laporan; jangan mengedit sendiri.
 - Jangan menjalankan git (commit, push, dsb.).

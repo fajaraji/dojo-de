@@ -78,7 +78,7 @@ export default {
       html: `<p><code>LIKE</code> mencocokkan teks dengan sebuah pola. Dua tanda khusus dipakai di dalam pola:</p>
 <ul><li><code>%</code> berarti "teks apa saja, boleh kosong". <code>'%Bluetooth%'</code> cocok dengan semua teks yang mengandung kata Bluetooth.</li>
 <li><code>_</code> berarti "tepat satu karakter apa saja". Karakter adalah satu tanda dalam teks: huruf, angka, spasi, atau tanda baca.</li></ul>
-<p>Seperti tanda sama dengan, <code>LIKE</code> membedakan huruf besar dan kecil. <code>ILIKE</code> sama dengan LIKE, tapi tidak membedakan huruf besar dan kecil. ILIKE tidak ada di SQL Server.</p>`,
+<p>Seperti tanda sama dengan, <code>LIKE</code> membedakan huruf besar dan kecil. <code>ILIKE</code> sama dengan LIKE, tapi tidak membedakan huruf besar dan kecil. Dokumentasi SQL Server tidak memuat ILIKE; padanannya ada di tabel "Di SQL Server".</p>`,
       examples: [{ sql: "select sku, product_name\nfrom app.products\nwhere product_name ilike '%bluetooth%'\norder by product_name;", note: "Semua produk yang namanya mengandung kata bluetooth, ditulis dengan huruf besar maupun kecil." }],
     },
     {
@@ -106,8 +106,8 @@ export default {
     },
   ],
   tsql: [
-    { pg: "where product_name ilike '%x%'", tsql: "where product_name like '%x%'", note: "SQL Server tidak punya ILIKE. Perbandingan teks di SQL Server mengikuti <i>collation</i> (aturan membandingkan teks). Collation bawaan yang dipilih saat SQL Server dipasang tidak membedakan huruf besar dan kecil (namanya mengandung CI, singkatan <i>case-insensitive</i> atau tidak membedakan huruf besar-kecil; untuk Windows berbahasa Indonesia, bawaannya Latin1_General_CI_AS), sehingga LIKE dan = juga tidak membedakannya. Collation bisa diganti per database atau per kolom, jadi cek pengaturan database tempatmu bekerja." },
-    { pg: "where is_active = true", tsql: "where is_active = 1", note: "SQL Server tidak punya tipe boolean. Biasanya dipakai tipe BIT berisi 1 atau 0." },
+    { pg: "where product_name ilike '%x%'", tsql: "where product_name like '%x%'", note: "Dokumentasi T-SQL tidak memuat ILIKE. Perbandingan teks di SQL Server, termasuk LIKE dan =, mengikuti <i>collation</i> (aturan membandingkan teks). Collation bawaan dipilih saat SQL Server dipasang, mengikuti pengaturan bahasa Windows. Untuk Windows berbahasa Inggris (Amerika Serikat), bawaannya SQL_Latin1_General_CP1_CI_AS. CI di nama itu singkatan <i>case-insensitive</i> (tidak membedakan huruf besar-kecil), sehingga LIKE dan = juga tidak membedakannya. Collation bisa diganti per database atau per kolom, jadi cek pengaturan database tempatmu bekerja." },
+    { pg: "where is_active = true", tsql: "where is_active = 1", note: "Dokumentasi SQL Server memakai tipe BIT untuk nilai benar/salah. BIT berisi 1, 0, atau NULL, dan panduan migrasi Microsoft memetakan tipe boolean PostgreSQL ke BIT." },
     { pg: "<> dan !=", tsql: "<> dan !=", note: "Keduanya dikenali di kedua dialek. <> adalah bentuk standar SQL." },
     { pg: "where order_ts >= '2025-10-01'", tsql: "where order_ts >= '20251001'", note: "Untuk kolom bertipe date dan datetime2, 'YYYY-MM-DD' aman. Untuk tipe lama datetime, cara bacanya bisa berubah mengikuti pengaturan bahasa dan urutan tanggal yang sedang dipakai koneksimu ke SQL Server, jadi tulis 'YYYYMMDD' tanpa tanda minus." },
     { pg: "is null / is not null", tsql: "is null / is not null", note: "Perilaku NULL sama. Fungsi pengganti NULL dibahas di bab 3." },

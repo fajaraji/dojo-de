@@ -125,7 +125,7 @@ export default {
     { pg: "join … on … / inner join … on …", tsql: "join … on … / inner join … on …", note: "Sama. INNER boleh dihilangkan di kedua dialek." },
     { pg: "left join, right join, full join", tsql: "left join, right join, full join", note: "Sama. Kata OUTER boleh ditulis atau tidak." },
     { pg: "cross join", tsql: "cross join", note: "Sama. FROM dua tabel dipisah koma juga menghasilkan semua kombinasi di SQL Server." },
-    { pg: "join app.payments using (order_id)", tsql: "join app.payments as p on p.order_id = o.order_id", note: "SQL Server tidak punya USING. Tata bahasa JOIN di SQL Server hanya menerima ON, kecuali CROSS JOIN." },
+    { pg: "join app.payments using (order_id)", tsql: "join app.payments as p on p.order_id = o.order_id", note: "Dokumentasi FROM di SQL Server tidak memuat USING. Syarat join ditulis dengan ON; hanya CROSS JOIN yang ditulis tanpa ON." },
     { pg: "from app.orders as o", tsql: "from app.orders as o", note: "Sama. AS boleh dihilangkan, dan setelah alias dipasang, nama asli tabel tidak boleh dipakai lagi di query itu." },
     { pg: "syarat di ON atau WHERE pada outer join", tsql: "sama", note: "Di kedua dialek, syarat di ON diterapkan sebelum join, syarat di WHERE setelah join." },
     { pg: "primary key, foreign key", tsql: "primary key, foreign key", note: "Konsepnya sama: satu tabel paling banyak satu primary key, kolomnya tidak boleh NULL, dan foreign key menolak nilai yang tidak ada di tabel rujukan." },

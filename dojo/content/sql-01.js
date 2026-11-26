@@ -110,9 +110,9 @@ export default {
     },
   ],
   tsql: [
-    { pg: "SELECT … LIMIT 5", tsql: "SELECT TOP 5 …", note: "Di SQL Server, jumlah baris ditulis tepat setelah SELECT. LIMIT tidak dikenal." },
+    { pg: "SELECT … LIMIT 5", tsql: "SELECT TOP (5) …", note: "Di SQL Server, jumlah baris ditulis tepat setelah SELECT. Sintaks SELECT di dokumentasi SQL Server tidak memuat LIMIT. Tulis angkanya di dalam kurung; TOP 5 tanpa kurung masih diterima, tetapi dokumentasinya menyarankan untuk tidak memakainya." },
     { pg: "ORDER BY … LIMIT 5 OFFSET 5", tsql: "ORDER BY … OFFSET 5 ROWS FETCH NEXT 5 ROWS ONLY", note: "Di SQL Server, OFFSET wajib ditulis bersama ORDER BY." },
-    { pg: "\"nama kolom\"", tsql: "[nama kolom] atau \"nama kolom\"", note: "Tanda ini dipakai untuk nama yang mengandung spasi. SQL Server juga menerima kutip ganda dengan pengaturan bawaannya, tapi [ ] lebih umum dipakai. Di PostgreSQL, nama tanpa tanda kutip selalu dibaca sebagai huruf kecil." },
+    { pg: "\"nama kolom\"", tsql: "[nama kolom] atau \"nama kolom\"", note: "Tanda ini dipakai untuk nama yang mengandung spasi. SQL Server menerima kutip ganda dengan pengaturan bawaannya, sedangkan [ ] selalu diterima apa pun pengaturannya. Di PostgreSQL, nama tanpa tanda kutip selalu dibaca sebagai huruf kecil." },
     { pg: "app.cities", tsql: "dbo.cities", note: "Skema bawaan SQL Server bernama dbo. Nama lengkap di SQL Server bisa tiga bagian: database.skema.tabel." },
     { pg: "-- komentar", tsql: "-- komentar", note: "Sama di kedua dialek." },
   ],

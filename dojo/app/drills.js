@@ -20,15 +20,61 @@ export function parseNumber(text) {
   return Number(s);
 }
 
+/** Merapikan keluaran program sebelum dibandingkan: spasi di akhir baris dan baris kosong di akhir dibuang. */
+export function normalizeStdout(s) {
+  return String(s || "").replace(/\r/g, "").split("\n").map(l => l.replace(/\s+$/, "")).join("\n").replace(/\n+$/, "");
+}
+
+const firstDiff = (a, b) => {
+  const x = a.split("\n"), y = b.split("\n");
+  for (let i = 0; i < Math.max(x.length, y.length); i++) if (x[i] !== y[i]) return { line: i + 1, got: x[i], want: y[i] };
+  return null;
+};
+
+async function checkPy(runPy, drill, answer) {
+  if (!runPy) return { ok: false, reason: "Mesin Python belum tersedia." };
+  const tail = drill.check ? `\n${drill.check}` : "";
+  const exp = await runPy(drill.solution + tail, { setup: drill.setup || "" });
+  if (!exp.ok) return { ok: false, reason: "Solusi rujukan gagal dijalankan: " + exp.error.message };
+  const usr = await runPy(answer + tail, { setup: drill.setup || "" });
+  if (!usr.ok) return { ok: false, error: usr.error, timedOut: !!usr.timedOut, stdout: usr.stdout };
+  const got = normalizeStdout(usr.stdout), want = normalizeStdout(exp.stdout);
+  if (got === want) return { ok: true };
+  if (!got) return { ok: false, reason: "Kodemu tidak mencetak apa pun. Pakai print() untuk menampilkan hasilnya." };
+  const d = firstDiff(got, want);
+  return { ok: false, reason: d.got === undefined
+    ? `Keluaranmu kurang baris: baris ke-${d.line} seharusnya berisi sesuatu.`
+    : d.want === undefined
+      ? `Keluaranmu punya baris lebih: baris ke-${d.line} ("${d.got}") tidak diharapkan.`
+      : `Baris ke-${d.line} keluaranmu "${d.got}" belum sesuai dengan yang diharapkan.` };
+}
+
+function checkPaste(drill, answer) {
+  const text = String(answer || "").trim();
+  if (!text) return { ok: false, reason: "Tempel dulu keluaran perintahnya di kotak jawaban." };
+  const ok = new RegExp(drill.expect, "im").test(text);
+  return ok ? { ok: true } : { ok: false, reason: "Keluaran yang kamu tempel belum menunjukkan hasil yang diharapkan. Pastikan perintahnya dijalankan persis seperti di soal, tanpa error, lalu tempel seluruh keluarannya." };
+}
+
 /**
  * Memeriksa satu jawaban.
  * Hasil: { ok: true } | { ok: false, reason?: string, error?: {message, code}, expected?: any }
  */
-export async function checkDrill(run, drill, answer) {
+export async function checkDrill(run, drill, answer, { runPy } = {}) {
+  if (drill.kind === "py") return checkPy(runPy, drill, answer);
+  if (drill.kind === "paste") return checkPaste(drill, answer);
   if (drill.kind === "number") {
-    const r = await run(drill.answerSql, { setup: drill.setup || "" });
-    if (!r.ok) return { ok: false, reason: "Kunci jawaban tidak bisa dihitung: " + r.error.message };
-    const expected = Number(lastTable(r).rows[0][0]);
+    let expected;
+    if (drill.answerPy) {
+      // kunci jawaban dihitung dengan Python: angka yang dicetak kode answerPy
+      const r = runPy ? await runPy(drill.answerPy, { setup: drill.setup || "" }) : { ok: false, error: { message: "mesin Python belum tersedia" } };
+      if (!r.ok) return { ok: false, reason: "Kunci jawaban tidak bisa dihitung: " + r.error.message };
+      expected = Number(normalizeStdout(r.stdout));
+    } else {
+      const r = await run(drill.answerSql, { setup: drill.setup || "" });
+      if (!r.ok) return { ok: false, reason: "Kunci jawaban tidak bisa dihitung: " + r.error.message };
+      expected = Number(lastTable(r).rows[0][0]);
+    }
     const got = parseNumber(answer);
     if (Number.isNaN(got)) return { ok: false, reason: "Tulis jawabanmu dalam bentuk angka, misalnya 1250 atau 1.250." };
     const ok = Math.abs(got - expected) <= Math.max(0.01, Math.abs(expected) * 1e-6);

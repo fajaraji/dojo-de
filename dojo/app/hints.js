@@ -49,6 +49,31 @@ const CODES = {
   "25P02": ["Transaksi sudah gagal", "Perintah sebelumnya di transaksi ini gagal, jadi perintah berikutnya ditolak sampai transaksi dibatalkan dengan ROLLBACK."],
 };
 
+// Error Python yang paling sering ditemui pemula: [judul, penjelasan]
+const PY_ERRORS = {
+  NameError: ["Nama belum dikenal", "Python belum mengenal nama itu: variabel atau fungsi tersebut belum dibuat (belum didefinisikan) di kode ini, atau ejaannya berbeda. Ingat: setiap latihan dijalankan dari awal, jadi variabel dari soal lain tidak terbawa."],
+  SyntaxError: ["Ada salah tulis di kode", "Python tidak bisa membaca kodenya. Periksa titik dua di akhir baris if/for/def, tanda kurung dan tanda kutip yang belum ditutup, serta koma."],
+  IndentationError: ["Indentasi tidak rapi", "Jarak spasi di awal baris (indentasi) tidak sesuai. Di Python, baris di dalam if, for, dan def harus menjorok dengan jumlah spasi yang sama, biasanya 4 spasi."],
+  TypeError: ["Tipe data tidak cocok", "Operasi atau fungsi dipakai pada tipe data yang salah, misalnya menjumlahkan teks dengan angka. Ubah tipenya dulu, misalnya int(teks) atau str(angka)."],
+  KeyError: ["Kunci tidak ditemukan", "Kunci (nama kolom di DataFrame, atau kunci di dict) itu tidak ada. Cek ejaannya, misalnya dengan print(df.columns) atau print(d.keys())."],
+  IndexError: ["Posisi di luar jangkauan", "Posisi (indeks) yang diminta melebihi jumlah isi list. Ingat: posisi pertama adalah 0, dan posisi terakhir adalah len(x) - 1."],
+  AttributeError: ["Atribut atau metode tidak ada", "Objek itu tidak punya atribut atau metode dengan nama tersebut. Cek ejaannya, dan pastikan tipe objeknya sesuai (misalnya DataFrame, bukan list)."],
+  ValueError: ["Nilai tidak bisa dipakai", "Tipenya benar, tetapi nilainya tidak bisa diproses, misalnya int('Rp 125.000'). Bersihkan nilainya dulu."],
+  ZeroDivisionError: ["Pembagian dengan nol", "Ada pembagian dengan nol. Periksa pembaginya dulu dengan if sebelum membagi."],
+  FileNotFoundError: ["Berkas tidak ditemukan", "Berkas di alamat itu tidak ada. Data latihan ada di /data/app/ dan /data/raw/, misalnya /data/app/orders.csv."],
+  ModuleNotFoundError: ["Pustaka tidak tersedia", "Modul atau pustaka itu tidak ada di mesin latihan. Di browser hanya tersedia pustaka standar Python, pandas, numpy, pyarrow, dan pytest. Pustaka lain dipasang di laptopmu dengan pip."],
+  ImportError: ["Gagal meng-import", "Nama yang di-import tidak ada di modul itu. Cek ejaan dan nama modulnya."],
+  AssertionError: ["Pemeriksaan assert gagal", "Syarat di perintah assert bernilai salah. Biasanya ini berarti tes menemukan hasil yang tidak sesuai."],
+};
+
+/** Penjelasan error Python dalam bahasa Indonesia. error.message berbentuk "NamaError: pesan". */
+export function explainPyError(error) {
+  const message = String(error && error.message || "");
+  const name = (/^(\w+(?:Error|Exception))\b/.exec(message.trim()) || [])[1];
+  const [judul, isi] = PY_ERRORS[name] || ["Kode gagal dijalankan", "Baca baris terakhir pesan error dari Python: nama error dan keterangannya biasanya menunjukkan masalahnya."];
+  return { judul, isi };
+}
+
 /** Penjelasan error PostgreSQL dalam bahasa Indonesia, ditambah saran kalau ada kebiasaan SQL Server. */
 export function explainPgError(error, sql) {
   const code = error && error.code, message = String(error && error.message || "");

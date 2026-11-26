@@ -1,10 +1,11 @@
 // Halaman utama: rute, navigasi, bab, soal, kamus data, ruang coba SQL, dan uji mandiri.
 import { createEngine } from "./engine.js";
-import { selfTest } from "./selftest.js";
+import { selfTest, selfTestPython } from "./selftest.js";
+import { createPyEngine } from "./py-engine.js";
 import { SCHEMA_DOC } from "../data/tokokita.js";
 import { loadLessons } from "../content/index.js";
 import { load, save } from "./store.js";
-import { explainPgError } from "./hints.js";
+import { explainPgError, explainPyError } from "./hints.js";
 import { checkDrill } from "./drills.js";
 import { lessonHtml } from "./lesson.js";
 
@@ -18,6 +19,11 @@ const engine = createEngine({
   onStatus: (text, bad) => { statusEl.textContent = text; statusEl.classList.toggle("bad", !!bad); },
 });
 engine.ready().catch(() => {});
+// mesin Python baru dinyalakan saat pertama kali ada kode Python yang dijalankan
+const pyEngine = createPyEngine({
+  base: new URL("../vendor/pyodide-314.0.7/", import.meta.url).href,
+  onStatus: (text, bad) => { statusEl.textContent = text; statusEl.classList.toggle("bad", !!bad); },
+});
 
 const state = { progress: load("progress", {}), tries: load("tries", {}), drafts: load("drafts", {}), exam: load("exam", {}) };
 let lessons = [];
@@ -65,6 +71,26 @@ function errorHtml(r, sql) {
 }
 const lastTable = (r) => [...r.results].reverse().find(x => x.columns && x.columns.length) || r.results[r.results.length - 1];
 
+function pyErrorHtml(r) {
+  if (r.timedOut) return `<div class="fb bad"><b>Kode dihentikan.</b> ${esc(r.error.message)}</div>`;
+  const ex = explainPyError(r.error);
+  const tb = r.error.traceback ? r.error.traceback.trim().split("\n").slice(-4).join("\n") : r.error.message;
+  return `<div class="fb bad"><b>${esc(ex.judul)}.</b> ${esc(ex.isi)}<br><span class="kbd">Pesan asli Python:</span><pre class="pyout">${esc(tb)}</pre></div>`;
+}
+const stdoutHtml = (r) => r.stdout && r.stdout.trim()
+  ? `<pre class="pyout">${esc(r.stdout.replace(/\n+$/, ""))}</pre>`
+  : '<p class="meta">Kode berjalan tanpa mencetak apa pun. Pakai print() untuk menampilkan hasil.</p>';
+
+async function runPyInto(key, code, setup = "") {
+  const fb = $("fb-" + key), out = $("out-" + key);
+  fb.innerHTML = '<div class="fb info">Menjalankan Python…</div>'; out.innerHTML = "";
+  const r = await pyEngine.run(code, { setup });
+  if (!r.ok) { fb.innerHTML = pyErrorHtml(r); if (r.stdout && r.stdout.trim()) out.innerHTML = stdoutHtml(r); return r; }
+  fb.innerHTML = `<p class="meta">Selesai dalam ${r.ms} ms.</p>`;
+  out.innerHTML = stdoutHtml(r);
+  return r;
+}
+
 async function runInto(key, sql, setup = "") {
   const fb = $("fb-" + key), out = $("out-" + key);
   fb.innerHTML = '<div class="fb info">Menjalankan…</div>'; out.innerHTML = "";
@@ -101,7 +127,8 @@ function renderRail() {
   // bab SQL dan modeling sengaja diselang-seling (urutan belajar), jadi bagian ditandai per bab, bukan dengan judul kelompok
   let grp = "";
   lessons.forEach((L, i) => {
-    const g = L.part === "capstone" ? "Capstone" : "Materi";
+    const g = { sql: "Bagian 1–2 · SQL & Modeling", model: "Bagian 1–2 · SQL & Modeling", capstone: "Capstone A", tools: "Bagian 3 · Alat kerja",
+      python: "Bagian 4 · Python", pipeline: "Bagian 5 · Pipeline", cloud: "Bagian 6 · Cloud & big data", advanced: "Bagian 7 · Lanjutan", career: "Bagian 8 · Karier" }[L.part] || L.part;
     if (g !== grp) { grp = g; html += `<div class="grp">${esc(g)}</div>`; }
     const tag = { sql: "SQL", model: "Modeling" }[L.part];
     const n = L.drills.length, d = L.drills.filter(x => state.progress[x.id]).length;
@@ -110,11 +137,12 @@ function renderRail() {
   html += `<div class="grp">Alat</div>
 <a href="#kamus" class="${current === "kamus" ? "on" : ""}"><span class="n">▤</span>Kamus data TokoKita</a>
 <a href="#coba" class="${current === "coba" ? "on" : ""}"><span class="n">▷</span>Ruang coba SQL</a>
+<a href="#coba-py" class="${current === "coba-py" ? "on" : ""}"><span class="n">▷</span>Ruang coba Python</a>
 <a href="#uji" class="${current === "uji" ? "on" : ""}"><span class="n">✓</span>Uji mesin</a>`;
   $("rail").innerHTML = html;
   const sel = $("mobsel");
   sel.innerHTML = `<option value="mulai">Mulai di sini</option>` + lessons.map((L, i) => `<option value="${L.id}">${i + 1}. ${esc(L.title)}</option>`).join("") +
-    `<option value="kamus">Kamus data TokoKita</option><option value="coba">Ruang coba SQL</option><option value="uji">Uji mesin</option>`;
+    `<option value="kamus">Kamus data TokoKita</option><option value="coba">Ruang coba SQL</option><option value="coba-py">Ruang coba Python</option><option value="uji">Uji mesin</option>`;
   sel.value = current;
 }
 
@@ -149,13 +177,22 @@ function pagePlayground() {
 <div id="fb-coba"></div><div class="out" id="out-coba"></div></div>`;
 }
 
+function pagePlaygroundPy() {
+  return `<div class="eyebrow">Alat</div><h1>Ruang coba Python</h1>
+<p class="lede">Tulis kode Python apa saja di sini. Data TokoKita tersedia sebagai berkas CSV di /data/app/ dan /data/raw/, misalnya /data/app/orders.csv. Mesin Python dinyalakan saat pertama kali kamu menjalankan kode.</p>
+<div class="box"><label class="kbd" for="ed-coba-py">Editor (Ctrl+Enter untuk menjalankan)</label>
+<textarea class="ed py" id="ed-coba-py" data-run="coba-py" data-draft="coba-py" spellcheck="false">${esc(state.drafts["coba-py"] ?? "import pandas as pd\n\norders = pd.read_csv('/data/app/orders.csv')\nprint(orders.head())")}</textarea>
+<div class="row"><button class="pri" data-act="run" data-target="coba-py">Jalankan</button></div>
+<div id="fb-coba-py"></div><div class="out" id="out-coba-py"></div></div>`;
+}
+
 function pageSelfTest() {
   return `<div class="eyebrow">Alat</div><h1>Uji mesin</h1>
-<p class="lede">Halaman ini memeriksa apakah PostgreSQL berjalan dengan benar di browser ini. Tunggu sampai kelima cek selesai.</p>
+<p class="lede">Halaman ini memeriksa apakah PostgreSQL dan Python berjalan dengan benar di browser ini. Tunggu sampai semua cek selesai.</p>
 <ol class="tests" id="tests"><li>Menjalankan uji…</li></ol>`;
 }
 async function runSelfTest() {
-  const res = await selfTest(engine);
+  const res = [...await selfTest(engine), ...await selfTestPython(pyEngine)];
   const el = $("tests");
   if (!el) return;
   el.innerHTML = res.map(r => `<li><span class="${r.ok ? "ok" : "bad"}">${r.ok ? "LULUS" : "GAGAL"}</span> ${esc(r.name)} <span class="kbd">(${esc(r.detail)})</span></li>`).join("");
@@ -169,6 +206,7 @@ function show(id) {
   if (i >= 0) { main.innerHTML = lessonHtml(lessons[i], i, lessons.length, lessons[i - 1], lessons[i + 1], state); if (lessons[i].exam) startExamClock(); }
   else if (current === "kamus") main.innerHTML = pageDictionary();
   else if (current === "coba") main.innerHTML = pagePlayground();
+  else if (current === "coba-py") main.innerHTML = pagePlaygroundPy();
   else if (current === "uji") { main.innerHTML = pageSelfTest(); runSelfTest(); }
   else { current = "mulai"; main.innerHTML = pageHome(); }
   renderRail();
@@ -181,10 +219,15 @@ async function onCheck(d) {
   fbSet(d.id, "info", "Memeriksa…");
   let answer;
   if (d.kind === "number") answer = $("num-" + d.id).value;
+  else if (d.kind === "paste") answer = $("paste-" + d.id).value;
   else answer = $("ed-" + d.id).value;
-  const r = await checkDrill(engine.run, d, answer);
+  const r = await checkDrill(engine.run, d, answer, { runPy: pyEngine.run });
   if (r.ok) { fbSet(d.id, "good", `<b>Benar.</b> ${d.why || ""}`); markDone(d.id); return; }
-  if (r.error) { $("fb-" + d.id).innerHTML = errorHtml({ ok: false, error: r.error, timedOut: r.timedOut }, answer); return; }
+  if (r.error) {
+    const er = { ok: false, error: r.error, timedOut: r.timedOut };
+    $("fb-" + d.id).innerHTML = d.kind === "py" ? pyErrorHtml(er) : errorHtml(er, answer);
+    return;
+  }
   fbSet(d.id, "bad", `<b>Belum tepat.</b> ${esc(r.reason)}${(state.tries[d.id] || 0) >= 2 ? " Tombol solusi sekarang aktif." : ""}`);
 }
 
@@ -194,12 +237,20 @@ document.addEventListener("click", async (e) => {
   const act = b.dataset.act, id = b.dataset.id;
   if (act === "run") {
     const t = b.dataset.target, d = findDrill(t);
-    runInto(t, $("ed-" + t).value, d && d.setup || "");
+    if (t === "coba-py" || (d && d.kind === "py")) runPyInto(t, $("ed-" + t).value, d && d.setup || "");
+    else runInto(t, $("ed-" + t).value, d && d.setup || "");
   } else if (act === "ex") {
     const [, si, ei] = b.dataset.key.split("-").map(Number);
     const L = lessons.find(x => x.id === current);
     const ex = L.sections[si].examples[ei];
-    runInto(b.dataset.key, ex.sql, ex.setup || "");
+    if (ex.lang === "py") runPyInto(b.dataset.key, ex.code, ex.setup || "");
+    else runInto(b.dataset.key, ex.sql, ex.setup || "");
+  } else if (act === "copy" || act === "copy-cmd") {
+    let text, key;
+    if (act === "copy") { const [, si, ei] = b.dataset.key.split("-").map(Number); text = lessons.find(x => x.id === current).sections[si].examples[ei].code; key = b.dataset.key; }
+    else { text = findDrill(id).command; key = id; }
+    try { await navigator.clipboard.writeText(text); fbSet(key, "info", "Perintah disalin. Tempel di terminal laptopmu."); }
+    catch { fbSet(key, "info", "Browser tidak mengizinkan menyalin otomatis. Pilih teks perintahnya lalu tekan Ctrl+C."); }
   } else if (act === "exam-start") {
     if (!state.exam[id]) { state.exam[id] = Date.now(); save("exam", state.exam); }
     startExamClock();
@@ -212,8 +263,9 @@ document.addEventListener("click", async (e) => {
     fbSet(id, "info", `<b>Petunjuk:</b> ${findDrill(id).hint}`);
   } else if (act === "sol") {
     const d = findDrill(id);
-    const body = d.kind === "number" ? d.answerSql : d.solution;
-    fbSet(id, "info", `<b>Salah satu jawaban yang benar:</b><pre class="sql"><code>${esc(body)}</code></pre>${d.why || ""}<br>Tutup, lalu ketik ulang jawabanmu sendiri tanpa melihat.`);
+    if (d.kind === "paste") { fbSet(id, "info", `<b>Contoh keluaran yang benar:</b><pre class="sh"><code>${esc(d.sampleOutput)}</code></pre>${d.why || ""}`); return; }
+    const body = d.kind === "number" ? (d.answerPy || d.answerSql) : d.solution;
+    fbSet(id, "info", `<b>Salah satu jawaban yang benar:</b><pre class="${d.kind === "py" || d.answerPy ? "py" : "sql"}"><code>${esc(body)}</code></pre>${d.why || ""}<br>Tutup, lalu ketik ulang jawabanmu sendiri tanpa melihat.`);
   } else if (act === "reset") {
     const d = findDrill(id); const ed = $("ed-" + id); ed.value = d.start || ""; delete state.drafts[id]; save("drafts", state.drafts);
   } else if (act === "choice") {
@@ -231,8 +283,13 @@ document.addEventListener("click", async (e) => {
 document.addEventListener("keydown", (e) => {
   const t = e.target;
   if (!t.matches || !t.matches("textarea.ed")) return;
-  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); const d = findDrill(t.dataset.run); runInto(t.dataset.run, t.value, d && d.setup || ""); }
-  else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); t.setRangeText("  ", t.selectionStart, t.selectionEnd, "end"); }
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+    e.preventDefault();
+    const k = t.dataset.run, d = findDrill(k);
+    if (k === "coba-py" || (d && d.kind === "py")) runPyInto(k, t.value, d && d.setup || "");
+    else runInto(k, t.value, d && d.setup || "");
+  }
+  else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); t.setRangeText(t.classList.contains("py") ? "    " : "  ", t.selectionStart, t.selectionEnd, "end"); }
 });
 document.addEventListener("input", (e) => {
   const key = e.target.dataset && e.target.dataset.draft;

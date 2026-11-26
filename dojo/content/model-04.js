@@ -343,7 +343,7 @@ export default {
   terms: [
     { term: "lookup surrogate key", def: "Langkah mencari surrogate key dimensi untuk setiap baris fakta, dengan JOIN dari natural key di sumber ke natural key di tabel dimensi." },
     { term: "point-in-time join", def: "JOIN ke dimensi SCD tipe 2 yang memilih versi yang berlaku pada tanggal kejadian, dengan syarat tanggal kejadian <code>between valid_from and valid_to</code>." },
-    { term: "late arriving dimension", def: "Keadaan ketika baris fakta sudah datang, tetapi anggota dimensinya belum dimuat ke tabel dimensi. Baris fakta itu sementara diarahkan ke unknown member." },
+    { term: "late arriving dimension", def: "Keadaan ketika baris fakta sudah datang, tetapi anggota dimensinya belum dimuat ke tabel dimensi. Salah satu cara menanganinya: baris fakta itu sementara diarahkan ke unknown member." },
     { term: "tonggak", def: "Tahap penting dalam perjalanan sebuah proses, misalnya pesanan dibuat, dikirim, dan diterima. Di accumulating snapshot, setiap tonggak punya kolom tanggal sendiri. Dalam bahasa Inggris disebut <i>milestone</i>." },
     { term: "rekonsiliasi", def: "Pemeriksaan bahwa hasil muatan cocok dengan sumbernya: jumlah baris, total setiap angka, dan tidak ada kunci kosong atau baris dobel." },
   ],
@@ -392,6 +392,7 @@ export default {
   on c.customer_id = o.customer_id
  and o.order_ts::date between c.valid_from and c.valid_to</code></pre>
 <p>Rentang versi tidak tumpang-tindih dan tidak bercelah, jadi setiap pesanan menemukan tepat satu versi. Dari 28.495 baris isi pesanan, 6.987 baris (milik 2.952 pesanan) jatuh di versi yang sekarang bukan versi terbaru. Kalau kamu memakai <code>is_current</code>, baris-baris itu tercatat dengan kota dan segmen terbaru, bukan keadaan saat memesan.</p>
+<p>Dokumentasi Microsoft Fabric menyarankan mengambil versi terbaru saat memuat fakta dari dimensi SCD tipe 2. Saran itu cocok untuk muatan rutin yang dijalankan berkala: menurut dokumentasi yang sama, dimensi diproses lebih dulu, baru fakta, sehingga untuk fakta yang baru terjadi, versi terbaru memang versi yang berlaku saat kejadian. Bab ini memuat riwayat hampir dua tahun sekaligus, jadi versi terbaru belum tentu versi saat kejadian, dan syarat tanggal di atas diperlukan.</p>
 <p>Setelah <code>customer_sk</code> versi yang benar tersimpan di tabel fakta, laporan cukup JOIN lewat <code>customer_sk</code>; syarat tanggal tidak perlu ditulis ulang.</p>`,
       examples: [{ setup: DIMS, sql: "select o.order_id, o.order_ts::date as tanggal_pesan,\n       c.customer_sk, c.segment, c.valid_from, c.valid_to\nfrom app.orders as o\nleft join dw.dim_customer as c\n  on c.customer_id = o.customer_id\n and o.order_ts::date between c.valid_from and c.valid_to\nwhere o.customer_id = 871\n  and o.order_ts >= '2025-02-01' and o.order_ts < '2025-03-01'\norder by o.order_ts;", note: "Pelanggan 871 memesan dua kali di Februari 2025. Pesanan 15 Februari jatuh di versi Reguler; pesanan 28 Februari jatuh di versi Silver, yang mulai berlaku pada potret 28 Februari." }],
     },
@@ -399,7 +400,7 @@ export default {
       title: "Unknown member di tabel fakta",
       html: `<p>Di data TokoKita, setiap baris isi pesanan menemukan pasangannya di ketiga dimensi. Di gudang data sungguhan, keadaan itu tidak bisa diandalkan. Contohnya <b>late arriving dimension</b>: baris fakta sudah datang, tetapi anggota dimensinya belum dimuat.</p>
 <p>Contoh di bawah dan soal pertama tabel fakta memakai skenario ini: <code>dw.dim_product</code> dibuat seolah terakhir dimuat 31 Mei 2025, sehingga 5 produk yang mulai dijual Juni 2025 (<code>created_at</code> mulai 2025-06-01) belum ada di dimensi. Produk itu punya 216 baris isi pesanan. Dengan JOIN biasa, 216 baris hilang dari fakta. Dengan LEFT JOIN dan <code>coalesce(…, -1)</code>, semua 28.495 baris masuk, dan 216 di antaranya berkunci -1.</p>
-<p>Baris -1 bukan tempat permanen. Setelah dimensinya diperbarui, kunci baris-baris itu harus diganti dengan kunci yang benar.</p>`,
+<p>Baris -1 bukan tempat permanen. Setelah dimensinya diperbarui, kunci baris-baris itu harus diganti dengan kunci yang benar. Dokumentasi Microsoft Fabric menyebut cara lain kalau natural key-nya pasti benar: langsung tambahkan baris dimensi baru yang baru berisi natural key itu (disebut <i>inferred member</i>, anggota yang diduga), pakai surrogate key-nya di fakta, lalu lengkapi barisnya saat keterangannya datang.</p>`,
       examples: [{ setup: `${DIMS}\n${STALE_PRODUCT}`, sql: "select coalesce(p.product_sk, -1) = -1 as produk_tidak_ditemukan,\n       count(*) as baris,\n       sum(oi.qty * oi.unit_price - oi.discount) as nilai_bersih\nfrom app.order_items as oi\nleft join dw.dim_product as p on p.product_id = oi.product_id\ngroup by coalesce(p.product_sk, -1) = -1\norder by produk_tidak_ditemukan;", note: "Baris yang produknya tidak ditemukan tetap terhitung. Ganti LEFT JOIN dengan JOIN, dan kelompok true hilang." }],
     },
     {
@@ -442,7 +443,7 @@ export default {
     },
     {
       title: "Memperbarui baris saat tonggak baru terjadi",
-      html: `<p>Baris transaction fact table ditulis sekali dan tidak diubah. Baris accumulating snapshot justru <b>diperbarui</b> setiap kali tonggak berikutnya terjadi: kolom kunci tanggal yang tadinya -1 diganti tanggal sungguhan, dan durasinya terisi.</p>
+      html: `<p>Baris transaction fact table ditulis sekali dan tidak diubah, kecuali untuk memperbaiki kesalahan. Baris accumulating snapshot justru <b>diperbarui</b> setiap kali tonggak berikutnya terjadi: kolom kunci tanggal yang tadinya -1 diganti tanggal sungguhan, dan durasinya terisi.</p>
 <p>Contoh di bawah mengubah sumber lebih dulu: pesanan 111920 diterima 1 November 2025, dan pesanan 111983 diserahkan ke kurir pada hari yang sama. Lalu MERGE menghitung ulang semua baris dari sumber. Baris yang sudah ada diperbarui (WHEN MATCHED), pesanan baru ditambahkan (WHEN NOT MATCHED). Karena isinya selalu dihitung dari sumber, MERGE ini idempoten: dijalankan dua kali, hasilnya sama.</p>
 <p>MERGE ini memperbarui 12.007 baris setiap kali, walaupun hanya dua yang berubah. Untuk tabel besar, tambahkan syarat di WHEN MATCHED supaya hanya baris yang tonggaknya berubah yang ditulis.</p>`,
       examples: [{ setup: `${WITH_FULFILLMENT}\n${NEW_MILESTONES}`, sql: `${MERGE_FULFILLMENT}\n\nselect order_id, shipped_date_key, delivered_date_key, days_to_ship, days_in_transit, days_to_deliver\nfrom dw.fact_fulfillment\nwhere order_id in (111920, 111983)\norder by order_id;`, note: "111920 sekarang punya tanggal terima 20251101 dan 4 hari di jalan. 111983 punya tanggal kirim, tetapi tanggal terimanya masih -1." }],
@@ -468,7 +469,7 @@ export default {
     },
   ],
   tsql: [
-    { pg: "o.order_ts::date between c.valid_from and c.valid_to", tsql: "cast(o.order_ts as date) between c.valid_from and c.valid_to", note: "Tanda :: tidak ada di SQL Server; pakai CAST. Mengubah datetime ke date membuang jamnya, sama seperti di PostgreSQL." },
+    { pg: "o.order_ts::date between c.valid_from and c.valid_to", tsql: "cast(o.order_ts as date) between c.valid_from and c.valid_to", note: "Di SQL Server, tanda :: tidak dipakai untuk mengubah tipe data (tanda itu punya arti lain di T-SQL); pakai CAST. Mengubah datetime ke date membuang jamnya, sama seperti di PostgreSQL." },
     { pg: "s.delivered_ts::date - s.shipped_ts::date", tsql: "datediff(day, s.shipped_ts, s.delivered_ts)", note: "Menurut dokumentasi, DATEDIFF menghitung berapa batas hari yang dilewati antara dua nilai, dan hasilnya int. Karena yang dihitung batas tengah malam, hasilnya sama dengan selisih dua tanggal setelah jamnya dibuang. Di PostgreSQL, date dikurangi date menghasilkan jumlah hari (integer)." },
     { pg: "to_char(d, 'YYYYMMDD')::integer", tsql: "convert(int, convert(char(8), d, 112))", note: "Gaya 112 di CONVERT adalah format ISO yyyyMMdd, misalnya 20251031. Cara lain tanpa teks: datepart(year, d) * 10000 + datepart(month, d) * 100 + datepart(day, d)." },
     { pg: "insert into dw.dim_customer (customer_sk, …) overriding system value values (-1, …)", tsql: "set identity_insert dw.dim_customer on; insert into dw.dim_customer (customer_sk, …) values (-1, …); set identity_insert dw.dim_customer off;", note: "Kolom IDENTITY hanya bisa diisi sendiri setelah SET IDENTITY_INSERT ON, dan INSERT-nya wajib memakai daftar kolom. Dalam satu sesi, hanya satu tabel yang boleh dalam keadaan ON." },

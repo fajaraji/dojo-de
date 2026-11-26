@@ -146,7 +146,7 @@ export default {
     { pg: "from (select …) as t", tsql: "from (select …) as t", note: "PostgreSQL 16 ke atas mengizinkan alias tabel turunan dihilangkan. Dokumentasi FROM di SQL Server menyebut alias tabel turunan wajib (<i>required</i>)." },
     { pg: "order by di dalam subquery", tsql: "hanya boleh bersama TOP atau OFFSET … FETCH", note: "Di SQL Server, subquery hanya boleh memakai ORDER BY kalau ada TOP atau OFFSET … FETCH. ORDER BY di situ hanya menentukan baris mana yang diambil; urutan hasil akhir tetap ditentukan oleh ORDER BY di query utama." },
     { pg: "union, union all", tsql: "union, union all", note: "Sama. ORDER BY ditulis sekali di akhir, setelah query terakhir." },
-    { pg: "intersect, except", tsql: "intersect, except", note: "Sama, termasuk urutan pengerjaan: INTERSECT lebih dulu, lalu EXCEPT dan UNION dari kiri ke kanan. Dua NULL dianggap sama. Nama kolom diambil dari query pertama. Tata bahasa SQL Server tidak punya INTERSECT ALL dan EXCEPT ALL, yang ada di PostgreSQL." },
+    { pg: "intersect, except", tsql: "intersect, except", note: "Sama, termasuk urutan pengerjaan: INTERSECT lebih dulu, lalu EXCEPT dan UNION dari kiri ke kanan. Dua NULL dianggap sama. Nama kolom diambil dari query pertama. Dokumentasi sintaks INTERSECT dan EXCEPT di SQL Server tidak memuat bentuk INTERSECT ALL dan EXCEPT ALL, yang ada di PostgreSQL." },
     { pg: "kolom di subquery yang tidak ada di tabel subquery", tsql: "sama", note: "Di kedua dialek, kolom itu dicari di tabel query luar tanpa pesan error. Tulis alias di depan setiap kolom." },
   ],
   summary: [

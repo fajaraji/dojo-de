@@ -197,7 +197,7 @@ export default {
     { term: "arah filter", def: "Arah filter diteruskan lewat sebuah relasi. Satu arah (<i>Single</i>): dari sisi satu (dimensi) ke sisi banyak (fakta). Dua arah (<i>Both</i>): juga dari fakta kembali ke dimensi." },
     { term: "DAX", def: "Data Analysis Expressions, bahasa rumus di Power BI, Analysis Services, dan Power Pivot di Excel." },
     { term: "measure (DAX)", def: "Rumus DAX yang dihitung saat visual memintanya, mengikuti filter yang sedang berlaku. Hasilnya tidak disimpan di model. Padanannya di SQL: agregasi setelah WHERE dan GROUP BY." },
-    { term: "kolom terhitung", def: "Kolom yang ditambahkan ke tabel model dengan rumus DAX. Nilainya dihitung per baris saat tabel dimuat ulang, lalu disimpan di model (pada mode Import, yaitu data disalin ke dalam model). Padanannya di SQL: kolom hitungan per baris." },
+    { term: "kolom terhitung", def: "Kolom yang ditambahkan ke tabel model dengan rumus DAX. Nilainya dihitung per baris saat data dimuat ulang, lalu disimpan di model. Padanannya di SQL: kolom hitungan per baris." },
     { term: "tabel tanggal", def: "Tabel dimensi tanggal yang ditandai dengan Mark as date table di Power BI. Kolom tanggalnya harus unik, tidak kosong, dan bersambung tanpa tanggal yang hilang." },
     { term: "one big table", def: "Satu tabel lebar yang menyatukan tabel fakta dengan semua atribut dimensinya, sehingga laporan tidak butuh JOIN. Disingkat OBT." },
     { term: "data vault", def: "Cara memodelkan gudang data dengan tiga jenis tabel: hub (daftar business key), link (hubungan antar-business key), dan satellite (atribut keterangan beserta riwayatnya)." },
@@ -214,7 +214,7 @@ export default {
     {
       title: "Model semantik: star schema di dalam Power BI",
       html: `<p>Gudang data yang sudah kamu bangun belum terlihat oleh orang bisnis. Mereka melihatnya lewat alat BI (<i>business intelligence</i>, alat untuk laporan dan analisis) seperti Power BI. Di Power BI, tabel-tabel itu dimuat ke <b>model semantik</b>: kumpulan tabel, relasi, dan rumus hitungan yang siap dipakai laporan. Dokumentasi Microsoft menyebut model yang dibuat di Power BI Desktop pada dasarnya adalah model tabular Analysis Services (mesin analisis milik Microsoft).</p>
-<p>Halaman laporan berisi <b>visual</b>, yaitu grafik, tabel, atau kartu angka. Menurut dokumentasi, setiap visual mengirim query ke model semantik, dan query itu umumnya menyaring, mengelompokkan, dan meringkas data. Karena itu model yang baik punya tabel untuk menyaring dan mengelompokkan (dimensi) dan tabel untuk diringkas (fakta). Itulah star schema.</p>
+<p>Halaman laporan berisi <b>visual</b>, yaitu grafik, tabel, atau kartu angka. Menurut dokumentasi, visual mengirim query ke model semantik, lalu menampilkan hasilnya. Panduan star schema di dokumentasi Power BI membagi tabel model menjadi dua jenis: tabel dimensi untuk menyaring dan mengelompokkan, dan tabel fakta untuk diringkas. Itulah star schema.</p>
 <p>Bab ini memakai star schema dari bab tabel fakta: <code>dw.fact_order_line</code> beserta <code>dw.dim_date</code>, <code>dw.dim_customer</code>, dan <code>dw.dim_product</code>. Satu tambahan: <code>dw.dim_customer</code> diberi kolom <code>province</code> dan <code>island</code> dari <code>app.cities</code>, mengikuti kota di setiap versi pelanggan. Semua tabel dibuat ulang oleh <code>setup</code> di setiap contoh dan soal. Gambar model di Power BI kira-kira seperti ini:</p>
 <pre>dim_date (1) ───────► (*) fact_order_line (*) ◄─────── (1) dim_product
                                 (*)
@@ -254,8 +254,8 @@ export default {
     {
       title: "Measure lawan kolom terhitung",
       html: `<p>Angka di visual dihitung dengan <b>DAX</b> (Data Analysis Expressions), bahasa rumus Power BI. Ada dua cara memakainya:</p>
-<ul><li><b>Measure</b>: rumus yang dihitung saat visual memintanya, mengikuti filter yang sedang berlaku (baris dan kolom visual, slicer, filter laporan). Dokumentasi menyebut hasil measure tidak pernah disimpan di model. Padanannya di SQL: fungsi agregasi yang dijalankan setelah WHERE dan GROUP BY.</li>
-<li><b>Kolom terhitung</b>: kolom baru di sebuah tabel model, dihitung per baris dengan rumus DAX. Pada mode Import (data disalin ke dalam model), nilainya disimpan di model dan dihitung ulang saat tabel di-refresh. Padanannya di SQL: kolom hitungan per baris.</li></ul>
+<ul><li><b>Measure</b>: rumus yang dihitung saat visual memintanya, mengikuti filter yang sedang berlaku (baris dan kolom visual, slicer, filter laporan). Dokumentasi menyebut hasil measure tidak dihitung lebih dulu dan tidak disimpan. Padanannya di SQL: fungsi agregasi yang dijalankan setelah WHERE dan GROUP BY.</li>
+<li><b>Kolom terhitung</b>: kolom baru di sebuah tabel model, dihitung per baris dengan rumus DAX. Menurut dokumentasi, nilainya dihitung saat data di-refresh, lalu disimpan di model, sehingga model makin besar. Padanannya di SQL: kolom hitungan per baris.</li></ul>
 <pre>-- measure (dihitung saat dibaca)
 Penjualan = SUM(fact_order_line[net_amount])
 Persen Diskon = DIVIDE(SUM(fact_order_line[discount]), SUM(fact_order_line[gross_amount]))
@@ -269,7 +269,7 @@ Persen Diskon Baris = DIVIDE(fact_order_line[discount], fact_order_line[gross_am
     },
     {
       title: "Dimensi tanggal sebagai tabel tanggal",
-      html: `<p>Power BI bisa membuat tabel tanggal tersembunyi sendiri untuk setiap kolom tanggal. Kalau kamu punya dimensi tanggal sendiri, tandai dengan <b>Mark as date table</b>. Dokumentasi mewajibkan penandaan ini kalau kamu memakai fungsi <i>time intelligence</i> klasik (fungsi DAX untuk perbandingan periode, seperti tahun lalu atau sejak awal tahun), atau kalau relasinya memakai kolom yang bukan bertipe tanggal dan kamu ingin memakai time intelligence. Contohnya surrogate key bilangan bulat seperti 20241231, persis seperti <code>date_key</code> di <code>dw.dim_date</code>. Untuk time intelligence berbasis kalender yang lebih baru, penandaan ini tidak selalu wajib.</p>
+      html: `<p>Power BI bisa membuat tabel tanggal tersembunyi sendiri untuk setiap kolom tanggal. Kalau kamu punya dimensi tanggal sendiri, tandai dengan <b>Mark as date table</b>. Dokumentasi mewajibkan penandaan ini kalau kamu memakai fungsi <i>time intelligence</i> klasik (fungsi DAX untuk perbandingan periode, seperti tahun lalu atau sejak awal tahun), atau kalau relasi tabel tanggalnya memakai kolom yang bukan bertipe tanggal. Contohnya surrogate key bilangan bulat seperti 20241231, persis seperti <code>date_key</code> di <code>dw.dim_date</code>. Kalau kamu memakai time intelligence berbasis kalender (<i>calendar-based</i>), cara yang dianjurkan dokumentasi, tabel tanggal tidak perlu ditandai.</p>
 <p>Saat ditandai, Power BI memeriksa kolom tanggalnya: nilainya unik, tidak ada yang kosong, dan bersambung dari awal sampai akhir tanpa tanggal yang hilang. Ketiga syarat ini bisa diperiksa dengan SQL sebelum data dimuat. Contoh pertama menghitung keunikan dan nilai kosong. Contoh kedua memakai LEAD untuk mencari loncatan tanggal.</p>
 <p>Hasilnya: 732 tanggal, semuanya unik, tidak ada yang kosong. Tetapi ada satu loncatan, dari 2025-12-31 ke 9999-12-31, yaitu baris -1 "Belum terjadi". Baris ini membuat syarat ketiga gagal. Salah satu pilihan desain adalah tidak memuat baris -1 ke model. Baris fakta yang <code>date_key</code>-nya -1 lalu tidak punya pasangan, dan masuk ke baris kosong yang ditambahkan Power BI. Di <code>dw.fact_order_line</code> tidak ada baris seperti itu, karena setiap pesanan sudah punya tanggal.</p>`,
       examples: [
@@ -280,7 +280,7 @@ Persen Diskon Baris = DIVIDE(fact_order_line[discount], fact_order_line[gross_am
     {
       title: "Kenapa star schema dianjurkan untuk Power BI",
       html: `<p>Dokumentasi Power BI menganjurkan model yang terdiri dari tabel dimensi dan tabel fakta, tanpa mencampur keduanya dalam satu tabel. Dimensi dipakai untuk menyaring dan mengelompokkan; fakta untuk diringkas. Tabel fakta juga harus dimuat dengan grain yang konsisten.</p>
-<p>Untuk dimensi berbentuk snowflake (produk, lalu kategori, lalu kategori induk), dokumentasi menyebut satu tabel dimensi gabungan umumnya lebih menguntungkan. Model snowflake memuat lebih banyak tabel, jalur filternya lebih panjang, daftar tabel lebih membingungkan, dan hirarki (misalnya kategori induk, lalu kategori, lalu produk) tidak bisa dibuat dari kolom beberapa tabel. Itu sebabnya <code>dw.dim_product</code> sudah menyimpan <code>category_name</code> dan <code>parent_category_name</code> langsung.</p>`,
+<p>Untuk dimensi berbentuk snowflake (produk, lalu kategori, lalu kategori induk), dokumentasi menyebut menggabungkannya menjadi satu tabel model sering lebih efisien: kinerjanya lebih baik, modelnya lebih sederhana, dan hirarki lintas tingkat (misalnya kategori induk, lalu kategori, lalu produk) bisa dibuat. Dokumentasi juga menyebut kolom sebuah hirarki harus berada di tabel yang sama. Itu sebabnya <code>dw.dim_product</code> sudah menyimpan <code>category_name</code> dan <code>parent_category_name</code> langsung.</p>`,
     },
     {
       title: "One big table lawan star schema",
@@ -300,12 +300,12 @@ Persen Diskon Baris = DIVIDE(fact_order_line[discount], fact_order_line[gross_am
       html: `<p><b>Data Vault</b> adalah cara lain memodelkan lapisan inti gudang data. Modelnya memakai tiga jenis tabel:</p>
 <ul><li><b>Hub</b>: daftar unik business key satu konsep bisnis, misalnya semua <code>customer_id</code>.</li>
 <li><b>Link</b>: hubungan antar-business key, misalnya pesanan dengan pelanggan dan produk.</li>
-<li><b>Satellite</b>: atribut keterangan beserta riwayat perubahannya, misalnya nama dan kota pelanggan. Satu satellite menempel pada tepat satu hub atau satu link.</li></ul>
+<li><b>Satellite</b>: atribut keterangan beserta riwayat perubahannya, misalnya nama dan kota pelanggan. Setiap satellite berisi keterangan untuk induknya, yaitu sebuah hub atau sebuah link.</li></ul>
 <pre>hub_customer ──── link_order_line ──── hub_product
       │                                     │
 sat_customer                           sat_product
 (nama, kota, segmen, beserta riwayat)  (nama, merek, harga, beserta riwayat)</pre>
-<p>Data Vault tidak dibuat untuk langsung dibaca laporan. Untuk laporan, biasanya dibangun lagi lapisan berbentuk dimensional (star schema) di atasnya. Bab ini hanya memberi gambaran; Data Vault tidak dipakai di latihan.</p>`,
+<p>Untuk laporan, dibangun lagi lapisan lain dari tabel-tabel Data Vault. Dokumentasi AutomateDV, alat untuk membangun Data Vault, menyebut lapisan itu <i>information mart</i>. Bab ini hanya memberi gambaran; Data Vault tidak dipakai di latihan.</p>`,
     },
     {
       title: "Lakehouse: Parquet, Delta Lake, dan medallion di Fabric",
@@ -323,7 +323,7 @@ sat_customer                           sat_product
 <ul><li><b>Model</b>: satu berkas <code>.sql</code> berisi satu SELECT. Nama model sama dengan nama berkasnya. Saat <code>dbt run</code>, dbt membungkus SELECT itu dengan <code>create view as</code> atau <code>create table as</code>. Bawaannya view.</li>
 <li><b>ref()</b>: menggantikan nama tabel. <code>{{ ref('dim_product') }}</code> diganti nama tabel sebenarnya sesuai lingkungan kerja (pengembangan atau produksi), dan dbt memakainya untuk menentukan urutan pembangunan model.</li>
 <li><b>Uji data</b>: SELECT yang mencari baris yang melanggar aturan; uji lulus kalau hasilnya nol baris. Ada empat uji bawaan: <code>unique</code>, <code>not_null</code>, <code>accepted_values</code>, dan <code>relationships</code>.</li>
-<li><b>Dokumentasi</b>: keterangan tabel dan kolom ditulis di berkas YAML (format teks untuk pengaturan), lalu <code>dbt docs generate</code> membuat situs dokumentasi beserta diagram alur antarmodel.</li></ul>
+<li><b>Dokumentasi</b>: keterangan tabel dan kolom ditulis di berkas YAML (format teks untuk pengaturan), lalu <code>dbt docs generate</code> menyusun bahan dokumentasinya dan <code>dbt docs serve</code> menampilkannya sebagai situs, lengkap dengan diagram alur antarmodel.</li></ul>
 <pre>-- models/fact_order_line.sql
 select oi.order_id, oi.line_no, p.product_sk, oi.qty
 from {{ ref('stg_order_items') }} as oi
@@ -346,12 +346,12 @@ models:
     },
   ],
   tsql: [
-    { pg: "select … from dw.fact_order_line f join dw.dim_customer c … where c.island = 'Jawa' group by …", tsql: "sama", note: "JOIN, WHERE, dan GROUP BY untuk query star schema ditulis sama di SQL Server. Bagian <code>count(*) filter (where …)</code> diganti <code>sum(case when … then 1 else 0 end)</code>, karena SQL Server tidak punya FILTER." },
+    { pg: "select … from dw.fact_order_line f join dw.dim_customer c … where c.island = 'Jawa' group by …", tsql: "sama", note: "JOIN, WHERE, dan GROUP BY untuk query star schema ditulis sama di SQL Server. Bagian <code>count(*) filter (where …)</code> diganti <code>sum(case when … then 1 else 0 end)</code>, karena sintaks COUNT di dokumentasi SQL Server tidak memuat FILTER." },
     { pg: "create table mart.obt_order_line as select …", tsql: "select … into mart.obt_order_line from …", note: "SELECT … INTO membuat tabel baru lalu mengisinya. Index dan constraint tabel sumber tidak ikut terbawa. Fabric Warehouse juga mendukung CREATE TABLE AS SELECT (CTAS)." },
     { pg: "pg_total_relation_size('mart.obt_order_line')", tsql: "exec sp_spaceused N'mart.obt_order_line';", note: "sp_spaceused mengembalikan jumlah baris (rows), ruang yang dipesan (reserved), ruang data (data), ruang index (index_size), dan ruang yang belum dipakai (unused). pg_total_relation_size mengembalikan satu angka byte, termasuk index." },
     { pg: "round(100 * sum(discount) / nullif(sum(gross_amount), 0), 2)", tsql: "round(100.0 * sum(discount) / nullif(sum(gross_amount), 0), 2)", note: "NULLIF sama di kedua dialek. Kalau kedua angka bilangan bulat, SQL Server juga membagi bulat, jadi tulis 100.0. Di DAX, DIVIDE menghasilkan BLANK untuk pembagi nol." },
     { pg: "lead(full_date) over (order by full_date)", tsql: "lead(full_date) over (order by full_date)", note: "Sama. Selisih hari ditulis <code>datediff(day, full_date, tanggal_berikutnya)</code>, karena date tidak bisa dikurangi dengan tanda minus di SQL Server." },
-    { pg: "(PostgreSQL tidak punya columnstore index bawaan)", tsql: "create clustered columnstore index cci_fact_order_line on dw.fact_order_line;", note: "Columnstore index menyimpan data per kolom, gagasan yang sama dengan Parquet: dokumentasi menyebutnya bentuk standar untuk tabel fakta besar, karena query biasanya hanya membaca sedikit kolom dan nilai sekolom mudah dikompresi (sampai 10 kali). Formatnya milik SQL Server, bukan berkas Parquet." },
+    { pg: "(daftar jenis index bawaan di dokumentasi PostgreSQL 18 tidak memuat columnstore)", tsql: "create clustered columnstore index cci_fact_order_line on dw.fact_order_line;", note: "Columnstore index menyimpan data per kolom, gagasan yang sama dengan Parquet: dokumentasi menyebutnya bentuk standar untuk tabel fakta besar, karena query biasanya hanya membaca sedikit kolom dan nilai sekolom mudah dikompresi (sampai 10 kali). Bedanya, columnstore index adalah index pada tabel SQL Server, sedangkan Parquet adalah format berkas." },
   ],
   summary: [
     "Model semantik Power BI paling baik berbentuk star schema: dimensi untuk menyaring dan mengelompokkan, fakta untuk diringkas.",

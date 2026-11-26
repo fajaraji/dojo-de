@@ -58,7 +58,7 @@ export default {
 <li><code>nilai::tipe</code>: bentuk singkat khas PostgreSQL.</li></ul>
 <p>Konversi dipakai untuk tiga keperluan umum: mengubah bilangan bulat menjadi desimal supaya pembagian tidak terpotong, mengubah teks menjadi tanggal atau angka, dan mengambil bagian tanggal dari kolom tanggal-dan-jam.</p>`,
       examples: [
-        { sql: "select order_id, order_ts,\n       order_ts::date as tanggal_pesan,\n       cast(shipping_fee as integer) as ongkir_bulat\nfrom app.orders\nwhere order_id = 100001;", note: "order_ts::date membuang jam, sehingga yang tersisa hanya tanggal. cast(… as integer) mengubah ongkir dari numeric menjadi bilangan bulat. Kalau ada angka di belakang koma, PostgreSQL membulatkannya ke bilangan bulat terdekat: cast(2.7 as integer) hasilnya 3." },
+        { sql: "select order_id, order_ts,\n       order_ts::date as tanggal_pesan,\n       cast(shipping_fee as integer) as ongkir_bulat\nfrom app.orders\nwhere order_id = 100001;", note: "order_ts::date membuang jam, sehingga yang tersisa hanya tanggal. cast(… as integer) mengubah ongkir dari numeric menjadi bilangan bulat. Kalau angkanya punya angka di belakang koma, bulatkan dulu dengan ROUND, misalnya cast(round(shipping_fee) as integer). Dengan begitu cara pembulatannya jelas, dan hasilnya sama di PostgreSQL dan SQL Server (lihat tabel Di SQL Server)." },
         { sql: "select order_id, line_no, qty,\n       qty / 4 as bagi_bulat,\n       qty::numeric / 4 as bagi_desimal\nfrom app.order_items\nwhere order_id between 100001 and 100005;", note: "qty bertipe integer. Setelah diubah ke numeric, pembagiannya tidak lagi terpotong." },
       ],
     },
@@ -102,11 +102,11 @@ end</code></pre>
     },
   ],
   tsql: [
-    { pg: "coalesce(a, b)", tsql: "coalesce(a, b) atau isnull(a, b)", note: "ISNULL hanya menerima dua nilai dan tidak ada di PostgreSQL. COALESCE menerima banyak nilai dan berlaku di keduanya." },
+    { pg: "coalesce(a, b)", tsql: "coalesce(a, b) atau isnull(a, b)", note: "ISNULL hanya menerima dua nilai, dan dokumentasi PostgreSQL tidak memuat fungsi ISNULL(a, b). COALESCE menerima banyak nilai dan berlaku di keduanya." },
     { pg: "case when … then … else … end", tsql: "case when … then … else … end, atau iif(syarat, a, b)", note: "IIF adalah singkatan khas SQL Server untuk CASE dengan satu syarat." },
     { pg: "nilai::date", tsql: "cast(nilai as date) atau convert(date, nilai)", note: "Di SQL Server, :: bukan tanda konversi tipe (tanda itu dipakai untuk keperluan lain), jadi pakai CAST atau CONVERT." },
     { pg: "7 / 2 = 3", tsql: "7 / 2 = 3", note: "Pembagian bilangan bulat juga terpotong di SQL Server." },
-    { pg: "cast(2.7 as integer) = 3", tsql: "cast(2.7 as int) = 2", note: "PostgreSQL membulatkan ke bilangan bulat terdekat; SQL Server membuang angka di belakang koma." },
+    { pg: "cast(round(2.7) as integer) = 3", tsql: "cast(2.7 as int) = 2, cast(round(2.7, 0) as int) = 3", note: "Di SQL Server, mengubah angka desimal menjadi int membuang angka di belakang koma. Kalau yang dimaksud pembulatan, tulis ROUND lebih dulu di kedua dialek." },
     { pg: "round(3.456, 1) = 3.5", tsql: "round(3.456, 1) = 3.500", note: "Di SQL Server, ROUND mempertahankan jumlah digit di belakang koma dan mengisinya dengan nol." },
     { pg: "text, numeric, boolean", tsql: "varchar/nvarchar, decimal, bit", note: "Nama tipe data berbeda; isinya serupa." },
   ],

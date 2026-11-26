@@ -45,13 +45,13 @@ export default {
     { term: "star schema", def: "Susunan tabel dengan satu tabel fakta di tengah dan beberapa tabel dimensi di sekelilingnya. Setiap tabel dimensi terhubung langsung ke tabel fakta lewat satu kunci." },
     { term: "tabel fakta", def: "Tabel yang mencatat kejadian satu proses bisnis pada satu grain. Isinya kunci ke tabel dimensi dan kolom angka (measure)." },
     { term: "tabel dimensi", def: "Tabel yang berisi keterangan satu dimensi, misalnya produk atau pelanggan: satu baris per anggota, dengan banyak kolom teks untuk menyaring, mengelompokkan, dan memberi label." },
-    { term: "desain dimensional", def: "Cara menyusun tabel di gudang data atau data mart menjadi tabel fakta dan tabel dimensi, supaya mudah ditanya dan diringkas. Metode yang paling dikenal berasal dari Ralph Kimball." },
+    { term: "desain dimensional", def: "Cara menyusun tabel di gudang data atau data mart menjadi tabel fakta dan tabel dimensi, supaya mudah ditanya dan diringkas. Rujukan yang banyak dipakai adalah buku Ralph Kimball, <i>The Data Warehouse Toolkit</i>." },
     { term: "proses bisnis", def: "Kegiatan rutin organisasi yang menghasilkan kejadian yang bisa diukur, misalnya menerima pesanan, menerima pembayaran, atau mengirim barang." },
-    { term: "grain", def: "Arti tepat satu baris di sebuah tabel atau hasil query. Di desain dimensional, grain tabel fakta ditetapkan sebelum kolomnya dipilih." },
+    { term: "grain", def: "Arti tepat satu baris di sebuah tabel atau hasil query. Di desain dimensional, semua baris satu tabel fakta harus punya grain yang sama; di bab ini grain ditetapkan sebelum kolomnya dipilih." },
     { term: "dimensi", def: "Konteks sebuah kejadian: siapa, apa, di mana, dan kapan. Contohnya pelanggan, produk, dan tanggal." },
     { term: "measure", def: "Angka hasil pengukuran sebuah kejadian, disimpan di tabel fakta. Disebut juga fakta. Contohnya jumlah barang dan nilai bersih." },
     { term: "additive", def: "Measure yang boleh dijumlah menurut dimensi apa pun, misalnya jumlah barang terjual." },
-    { term: "semi-additive", def: "Measure yang boleh dijumlah menurut sebagian dimensi saja, biasanya tidak menurut waktu. Contohnya jumlah pelanggan pada tanggal potret, saldo, atau stok." },
+    { term: "semi-additive", def: "Measure yang boleh dijumlah menurut sebagian dimensi saja, misalnya tidak boleh dijumlah antar periode waktu. Contohnya jumlah pelanggan pada tanggal potret, saldo, atau stok." },
     { term: "non-additive", def: "Measure yang tidak boleh dijumlah sama sekali, misalnya persentase, rasio, rata-rata, harga satuan, dan jumlah pelanggan unik." },
     { term: "snowflake schema", def: "Bentuk star schema yang tabel dimensinya dinormalisasi menjadi beberapa tabel, misalnya produk, lalu kategori, lalu kategori induk. Query butuh lebih banyak JOIN." },
     { term: "transaction fact table", def: "Tabel fakta dengan satu baris per kejadian, misalnya satu baris per produk di satu pesanan. Baris dicatat sekali saat kejadian terjadi." },
@@ -65,11 +65,11 @@ export default {
   sections: [
     {
       title: "Desain dimensional dan empat langkahnya",
-      html: `<p>Di bab sebelumnya kamu melihat bahwa tabel aplikasi (OLTP) dinormalisasi supaya penyimpanan dan perubahan data aman. Untuk analisis (OLAP), susunan itu merepotkan: satu pertanyaan sederhana bisa butuh lima JOIN. <b>Desain dimensional</b> adalah cara menyusun tabel di gudang data atau data mart supaya mudah ditanya dan diringkas. Metode yang paling banyak dipakai berasal dari Ralph Kimball, dalam buku <i>The Data Warehouse Toolkit</i>.</p>
+      html: `<p>Di bab sebelumnya kamu melihat bahwa tabel aplikasi (OLTP) dinormalisasi supaya penyimpanan dan perubahan data aman. Untuk analisis (OLAP), susunan itu merepotkan: satu pertanyaan sederhana bisa butuh lima JOIN. <b>Desain dimensional</b> adalah cara menyusun tabel di gudang data atau data mart supaya mudah ditanya dan diringkas. Rujukan yang banyak dipakai adalah buku <i>The Data Warehouse Toolkit</i> karya Ralph Kimball; dokumentasi desain dimensional Microsoft Fabric juga merujuk ke buku ini.</p>
 <p>Desain dimensional hanya memakai dua jenis tabel:</p>
 <ul><li><b>Tabel fakta</b>: mencatat kejadian beserta angkanya, misalnya "pesanan 100001 berisi 1 buah produk nomor 74 senilai Rp 31.900".</li>
 <li><b>Tabel dimensi</b>: berisi keterangan kejadian itu, misalnya nama produk, kategori, kota pelanggan.</li></ul>
-<p>Kimball menyusun desain dalam empat langkah, selalu dengan urutan ini:</p>
+<p>Bab ini menyusun desain dalam empat langkah, selalu dengan urutan ini:</p>
 <ol><li>Pilih <b>proses bisnis</b> yang mau dianalisis.</li>
 <li>Tentukan <b>grain</b>: satu baris tabel fakta mewakili apa.</li>
 <li>Tentukan <b>dimensi</b>: keterangan apa yang menempel pada setiap baris.</li>
@@ -88,8 +88,8 @@ export default {
     },
     {
       title: "Grain: tetapkan sebelum memilih kolom",
-      html: `<p>Kamu sudah mengenal <b>grain</b> di bab agregasi: arti tepat satu baris. Di desain dimensional, grain tabel fakta ditulis sebagai kalimat <i>sebelum</i> kolom apa pun dipilih, misalnya "1 baris = 1 produk di dalam 1 pesanan". Semua kolom yang masuk harus cocok dengan kalimat itu.</p>
-<p>Kimball menyarankan grain paling rinci yang dicatat sistem sumber (disebut <i>atomic grain</i>, grain atom). Dari data yang rinci, ringkasan apa pun bisa dibuat: per hari, per kota, per merek. Dari data yang sudah diringkas per bulan, rincian per hari tidak bisa dikembalikan.</p>
+      html: `<p>Kamu sudah mengenal <b>grain</b> di bab agregasi: arti tepat satu baris. Di bab ini, grain tabel fakta ditulis sebagai kalimat <i>sebelum</i> kolom apa pun dipilih, misalnya "1 baris = 1 produk di dalam 1 pesanan". Semua kolom yang masuk harus cocok dengan kalimat itu.</p>
+<p>Pilih grain paling rinci yang dicatat sistem sumber. Dokumentasi Microsoft Fabric menyebut tabel fakta transaksi biasanya menyimpan fakta pada tingkat paling rinci yang mungkin. Dari data yang rinci, ringkasan apa pun bisa dibuat: per hari, per kota, per merek. Dari data yang sudah diringkas per bulan, rincian per hari tidak bisa dikembalikan.</p>
 <p>Kesalahan umum adalah mencampur dua grain di satu tabel. Ongkos kirim (<code>shipping_fee</code>) dicatat per pesanan, sedangkan isi pesanan dicatat per produk. Kalau ongkos kirim ditempel ke setiap baris produk, nilainya terulang sebanyak jumlah produk di pesanan itu, persis seperti baris berlipat di bab JOIN.</p>`,
       examples: [
         { sql: "select sum(shipping_fee) as ongkir_grain_pesanan\nfrom app.orders;", note: "Total ongkos kirim yang benar: Rp 151.132.000, dihitung di grain pesanan." },
@@ -110,7 +110,7 @@ export default {
     {
       title: "Tabel dimensi",
       html: `<p><b>Dimensi</b> adalah konteks sebuah kejadian: siapa (pelanggan), apa (produk), di mana (kota), dan kapan (tanggal). <b>Tabel dimensi</b> menyimpan keterangan satu dimensi, satu baris per anggota. Kolomnya kebanyakan teks yang dipakai untuk menyaring, mengelompokkan, dan memberi label di laporan.</p>
-<p>Berbeda dengan tabel aplikasi, tabel dimensi sengaja <i>tidak</i> dinormalisasi. <code>contoh.dim_product</code> langsung menyimpan nama kategori (<code>category_name</code>) dan nama kategori satu tingkat di atasnya (<code>parent_category_name</code>), walaupun nama yang sama terulang di banyak produk. Pengulangan ini murah, karena tabel dimensi kecil dibanding tabel fakta: 150 produk lawan 28.495 baris fakta.</p>
+<p>Berbeda dengan tabel aplikasi, tabel dimensi sengaja <i>tidak</i> dinormalisasi. <code>contoh.dim_product</code> langsung menyimpan nama kategori (<code>category_name</code>) dan nama kategori satu tingkat di atasnya (<code>parent_category_name</code>), walaupun nama yang sama terulang di banyak produk. Di TokoKita, pengulangan ini murah, karena tabel dimensinya kecil dibanding tabel fakta: 150 produk lawan 28.495 baris fakta.</p>
 <p><code>contoh.dim_customer</code> menyimpan nama (<code>full_name</code>), segmen (<code>segment</code>), kota (<code>city_name</code>), provinsi (<code>province</code>), pulau (<code>island</code>), dan tanggal daftar (<code>signup_date</code>) setiap pelanggan, dengan kunci <code>customer_id</code>. Isinya diambil dari <code>app.customers</code>, jadi segmen dan kotanya adalah keadaan terbaru, bukan keadaan saat pesanan dibuat.</p>`,
       examples: [{ setup: STAR, sql: "select *\nfrom contoh.dim_product\norder by product_id\nlimit 5;", note: "Satu baris per produk, lengkap dengan nama kategori dan kategori induknya." }],
     },
@@ -123,16 +123,16 @@ export default {
     {
       title: "Snowflake schema",
       html: `<p><b>Snowflake schema</b> adalah star schema yang tabel dimensinya dinormalisasi. Produk tidak lagi menyimpan nama kategori; produk merujuk ke tabel kategori, dan kategori merujuk ke kategori induknya. Contoh di bawah memakai <code>contoh.dim_product_snow</code> dan <code>contoh.dim_category</code>, yang dibuat dengan cara ini.</p>
-<p>Hasilnya sama dengan versi star, tetapi butuh tiga JOIN untuk satu dimensi. Kimball menyarankan star schema, karena query-nya lebih pendek dan lebih mudah dipahami pengguna laporan. Snowflake menghemat sedikit ruang, tetapi tabel dimensi memang kecil, sehingga penghematannya jarang berarti.</p>`,
+<p>Hasilnya sama dengan versi star, tetapi butuh tiga JOIN untuk satu dimensi. Dokumentasi Microsoft Fabric menyarankan star schema dan menyebut snowflake sebagai pengecualian, misalnya untuk dimensi yang sangat besar sehingga biaya penyimpanan lebih penting daripada kecepatan query. Dimensi produk TokoKita hanya 150 baris, jadi bentuk star lebih cocok.</p>`,
       examples: [{ setup: SNOW, sql: "select pc.category_name as parent_category_name,\n       sum(f.net_amount) as nilai_bersih\nfrom contoh.fact_sales f\njoin contoh.dim_product_snow p on p.product_id = f.product_id\njoin contoh.dim_category c on c.category_id = p.category_id\njoin contoh.dim_category pc on pc.category_id = c.parent_id\ngroup by pc.category_name\norder by nilai_bersih desc;", note: "Tabel dim_category di-JOIN dua kali dengan alias berbeda: sekali sebagai kategori, sekali sebagai kategori induk." }],
     },
     {
       title: "Tiga sifat measure",
       html: `<p>Sebelum menjumlah sebuah measure, cek dulu sifatnya:</p>
 <ul><li><b>Additive</b>: boleh dijumlah menurut dimensi apa pun. <code>qty</code> dan <code>net_amount</code> additive. Total nilai bersih per kategori induk, kalau dijumlah, sama dengan total keseluruhan (Rp 5.782.717.000), dan begitu juga total per pulau.</li>
-<li><b>Semi-additive</b>: boleh dijumlah menurut sebagian dimensi, tetapi tidak menurut waktu. Contohnya saldo rekening, stok gudang, atau jumlah pelanggan pada tanggal potret.</li>
+<li><b>Semi-additive</b>: boleh dijumlah menurut sebagian dimensi saja. Contohnya saldo rekening, stok gudang, atau jumlah pelanggan pada tanggal potret: boleh dijumlah antar segmen pada satu tanggal, tetapi tidak antar tanggal.</li>
 <li><b>Non-additive</b>: tidak boleh dijumlah sama sekali. Contohnya persentase, rasio, rata-rata, harga satuan, dan jumlah pelanggan unik.</li></ul>
-<p>Aturan Kimball untuk measure non-additive: simpan komponennya yang additive (pembilang dan penyebut) di tabel fakta, lalu hitung rasionya di langkah terakhir, setelah dijumlah.</p>`,
+<p>Untuk measure non-additive, dokumentasi Microsoft Fabric menyarankan menyimpan komponennya, misalnya potongan dalam rupiah, bukan persen diskonnya. Jadi simpan komponen yang additive (pembilang dan penyebut) di tabel fakta, lalu hitung rasionya di langkah terakhir, setelah dijumlah.</p>`,
     },
     {
       title: "Non-additive: persentase dan rata-rata",
@@ -163,7 +163,7 @@ export default {
     },
     {
       title: "Empat jenis tabel fakta",
-      html: `<p>Kimball membedakan tabel fakta menurut cara kejadiannya dicatat:</p>
+      html: `<p>Dokumentasi Microsoft Fabric membagi tabel fakta menjadi tiga jenis menurut cara kejadiannya dicatat (transaction, periodic snapshot, accumulating snapshot), dan memberi nama khusus untuk tabel fakta tanpa measure (factless):</p>
 <ul><li><b>Transaction fact table</b>: satu baris per kejadian, dicatat sekali saat kejadian terjadi. Contohnya <code>contoh.fact_sales</code> dan <code>contoh.fact_payment</code>. Jenis ini paling umum.</li>
 <li><b>Periodic snapshot</b>: satu baris per anggota per periode tetap, berisi keadaan di akhir periode, ada atau tidak ada kejadian. Contohnya jumlah pelanggan per segmen per akhir bulan dari <code>raw.customer_snapshot</code>, atau stok per produk per akhir hari. Measure-nya sering semi-additive.</li>
 <li><b>Accumulating snapshot</b>: satu baris per perjalanan proses yang punya awal dan akhir jelas, dengan satu kolom tanggal untuk setiap tahap. Barisnya diperbarui saat tahap berikutnya terjadi. Contohnya pesanan: dibuat, dikirim, diterima. Dari 12.007 pesanan, 760 belum punya baris pengiriman (dibatalkan atau belum dikirim) dan 49 masih di perjalanan, jadi kolom tahap mereka kosong.</li>
@@ -176,7 +176,7 @@ export default {
     {
       title: "Conformed dimension dan bus matrix",
       html: `<p><b>Conformed dimension</b> adalah tabel dimensi yang sama (kunci, kolom, dan isinya sama) yang dipakai beberapa tabel fakta. <code>contoh.dim_customer</code> dipakai oleh <code>fact_sales</code> dan <code>fact_payment</code>. Karena labelnya sama persis, ringkasan per pulau dari dua tabel fakta itu bisa diletakkan berdampingan. Jangan menggabungkan dua tabel fakta langsung dengan JOIN: barisnya berlipat. Ringkas masing-masing per kolom dimensi yang sama, lalu bandingkan hasilnya.</p>
-<p><b>Bus matrix</b> adalah tabel perencanaan untuk seluruh gudang data: baris = proses bisnis, kolom = dimensi, X = dimensi dipakai proses itu. Kolom yang punya banyak X adalah dimensi yang dipakai bersama, sehingga harus dibuat sebagai conformed dimension. Bus matrix TokoKita:</p>
+<p>Untuk merencanakan dimensi bersama, bab ini memakai <b>bus matrix</b>, tabel perencanaan untuk seluruh gudang data: baris = proses bisnis, kolom = dimensi, X = dimensi dipakai proses itu. Kolom yang punya banyak X adalah dimensi yang dipakai bersama, sehingga harus dibuat sebagai conformed dimension. Bus matrix TokoKita:</p>
 <div class="tw"><table class="t"><tr><th>Proses bisnis</th><th>Tanggal</th><th>Pelanggan</th><th>Produk</th><th>Cara bayar</th><th>Kurir</th></tr>
 <tr><td>Pemesanan</td><td>X</td><td>X</td><td>X</td><td></td><td></td></tr>
 <tr><td>Pembayaran</td><td>X</td><td>X</td><td></td><td>X</td><td></td></tr>
@@ -195,12 +195,12 @@ export default {
     { pg: "count(*)", tsql: "count_big(*)", note: "Di SQL Server, COUNT menghasilkan int dan gagal kalau hasilnya lebih dari 2.147.483.647; COUNT_BIG menghasilkan bigint. Tabel fakta besar bisa melewati batas itu. Di PostgreSQL, COUNT sudah menghasilkan bigint." },
   ],
   summary: [
-    "Empat langkah Kimball: pilih proses bisnis, tentukan grain, tentukan dimensi, tentukan fakta.",
+    "Empat langkah desain: pilih proses bisnis, tentukan grain, tentukan dimensi, tentukan fakta.",
     "Tetapkan grain sebagai kalimat sebelum memilih kolom, dan pilih grain paling rinci. Jangan mencampur dua grain di satu tabel fakta.",
     "Tabel fakta berisi kunci dan measure; tabel dimensi berisi keterangan teks dan sengaja tidak dinormalisasi.",
     "Star schema: setiap dimensi langsung terhubung ke tabel fakta. Snowflake: dimensi dipecah, sehingga JOIN bertambah.",
-    "Measure additive boleh dijumlah; semi-additive tidak boleh dijumlah antar waktu; non-additive (persen, rata-rata, pelanggan unik) dihitung ulang dari komponennya.",
-    "Jenis tabel fakta: transaction, periodic snapshot, accumulating snapshot, dan factless.",
+    "Measure additive boleh dijumlah; semi-additive hanya boleh dijumlah menurut sebagian dimensi (misalnya tidak antar waktu); non-additive (persen, rata-rata, pelanggan unik) dihitung ulang dari komponennya.",
+    "Tiga jenis tabel fakta: transaction, periodic snapshot, dan accumulating snapshot. Tabel fakta tanpa measure disebut factless fact table.",
     "Conformed dimension membuat hasil beberapa tabel fakta bisa dibandingkan; bus matrix memetakan proses bisnis ke dimensinya.",
   ],
   drills: [
@@ -244,7 +244,7 @@ export default {
     { id: "model-02-13", kind: "number", prompt: "Untuk pesanan Januari–Oktober 2025, berapa selisih antara jumlah pelanggan unik per bulan yang dijumlahkan dan jumlah pelanggan unik sebenarnya di periode itu?",
       answerSql: "select count(distinct customer_id::text || '-' || to_char(order_ts, 'YYYY-MM')) - count(distinct customer_id) from app.orders where order_ts >= '2025-01-01'",
       why: "Pasangan pelanggan-bulan berjumlah 4.314, pelanggan unik 1.352, selisihnya 2.962. Query: select count(distinct customer_id::text || '-' || to_char(order_ts, 'YYYY-MM')) - count(distinct customer_id) from app.orders where order_ts >= '2025-01-01'.", hint: "Lihat contoh di bagian pelanggan unik." },
-    { id: "model-02-14", kind: "explain", prompt: "Rancang tabel fakta untuk proses pengembalian barang (<code>app.returns</code>) dengan empat langkah Kimball. Sebutkan grain, dimensi, measure, dan jenis tabel faktanya.",
+    { id: "model-02-14", kind: "explain", prompt: "Rancang tabel fakta untuk proses pengembalian barang (<code>app.returns</code>) dengan empat langkah desain dari bab ini. Sebutkan grain, dimensi, measure, dan jenis tabel faktanya.",
       model: "Proses bisnis: pengembalian barang oleh pelanggan. Grain: 1 baris = 1 pengembalian untuk 1 baris pesanan, sama dengan app.returns. Dimensi: tanggal pengembalian (dari return_ts), produk (lewat order_id dan line_no ke app.order_items), dan pelanggan (lewat app.orders); alasan pengembalian (reason) juga bisa menjadi kolom penyaring. Measure: jumlah barang dikembalikan (qty, additive), dan bisa ditambah nilai barang yang dikembalikan (qty dikali harga satuan dari app.order_items). Jenisnya transaction fact table, karena setiap pengembalian adalah satu kejadian yang dicatat sekali.",
       hint: "Mulai dari grain app.returns di kamus data, lalu tanyakan: siapa, apa, kapan, dan angka apa yang diukur." },
   ],

@@ -1,1 +1,1 @@
-{"name":"dojo-vendor","private":true,"dependencies":{"@electric-sql/pglite":"0.5.16"}}
+{"name":"dojo-vendor","private":true,"dependencies":{"@electric-sql/pglite":"0.5.16","pyodide":"314.0.7"}}
