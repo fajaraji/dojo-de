@@ -35,7 +35,7 @@ const OPERATORS = [["||", /\|\|/g], ["::", /::/g], ["<>", /<>/g], ["!=", /!=/g],
 
 export const KNOWN_FEATURES = new Set([
   ...PHRASES.map(p => p[1]), ...KEYWORDS.map(k => k.toUpperCase()), ...FUNCTIONS.map(f => f.toUpperCase() + "()"),
-  ...OPERATORS.map(o => o[0]), "SELECT *", "COUNT(DISTINCT)", "SUBQUERY",
+  ...OPERATORS.map(o => o[0]), "SELECT *", "COUNT(DISTINCT)", "SUBQUERY", "POSISI KOLOM",
 ]);
 
 const blank = (text, re) => text.replace(re, (m) => " ".repeat(m.length));
@@ -48,6 +48,8 @@ export function sqlFeatures(sql) {
   if (/\bselect\s+(distinct\s+)?\*|\b[a-z_][a-z0-9_]*\.\*/.test(s)) found.add("SELECT *");
   if (/\bcount\s*\(\s*distinct\b/.test(s)) found.add("COUNT(DISTINCT)");
   if (/\(\s*select\b/.test(s)) found.add("SUBQUERY");
+  // GROUP BY 1 / ORDER BY 2: kolom disebut lewat nomor urutnya di SELECT
+  if (/\b(group|order)\s+by\s+\d/.test(s)) found.add("POSISI KOLOM");
   // FROM tabel1, tabel2 adalah gabungan semua pasangan baris, sama dengan CROSS JOIN
   if (/\bfrom\s+(?:[a-z_][\w.]*|\([^()]*\))(?:\s+(?:as\s+)?[a-z_]\w*)?\s*,/.test(s)) found.add("CROSS JOIN");
   for (const [phrase, name] of PHRASES) {

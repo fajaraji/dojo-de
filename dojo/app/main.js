@@ -98,12 +98,14 @@ const fbSet = (id, cls, html) => { const el = $("fb-" + id); if (el) el.innerHTM
 /* ---------- navigasi ---------- */
 function renderRail() {
   let html = `<a href="#mulai" class="${current === "mulai" ? "on" : ""}"><span class="n">⌂</span>Mulai di sini</a>`;
+  // bab SQL dan modeling sengaja diselang-seling (urutan belajar), jadi bagian ditandai per bab, bukan dengan judul kelompok
   let grp = "";
   lessons.forEach((L, i) => {
-    const g = { sql: "Bagian 1 · SQL", model: "Bagian 2 · Data Modeling", capstone: "Capstone" }[L.part] || L.part;
+    const g = L.part === "capstone" ? "Capstone" : "Materi";
     if (g !== grp) { grp = g; html += `<div class="grp">${esc(g)}</div>`; }
+    const tag = { sql: "SQL", model: "Modeling" }[L.part];
     const n = L.drills.length, d = L.drills.filter(x => state.progress[x.id]).length;
-    html += `<a href="#${L.id}" class="${current === L.id ? "on" : ""}"><span class="n">${String(i + 1).padStart(2, "0")}</span>${esc(L.title)}<span class="ck">${d}/${n}</span></a>`;
+    html += `<a href="#${L.id}" class="${current === L.id ? "on" : ""}"><span class="n">${String(i + 1).padStart(2, "0")}</span><span class="tt">${esc(L.title)}${tag ? `<span class="pt">${tag}</span>` : ""}</span><span class="ck">${d}/${n}</span></a>`;
   });
   html += `<div class="grp">Alat</div>
 <a href="#kamus" class="${current === "kamus" ? "on" : ""}"><span class="n">▤</span>Kamus data TokoKita</a>

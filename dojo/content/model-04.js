@@ -321,7 +321,11 @@ left join dw.dim_date as tk on tk.date_key = f.shipped_date_key
 left join dw.dim_date as tt on tt.date_key = f.delivered_date_key
 left join dw.dim_date as tr on tr.date_key = f.returned_date_key;`;
 
-const VERIFY_MART = `select year, month, order_count, customer_count, qty, gross_amount, discount, net_amount
+const VERIFY_MART = `select year, month, order_count, customer_count, qty, gross_amount, discount, net_amount,
+       (select string_agg(a.attname, ',' order by a.attname)
+        from pg_constraint as k
+        join pg_attribute as a on a.attrelid = k.conrelid and a.attnum = any (k.conkey)
+        where k.conrelid = 'mart.sales_monthly'::regclass and k.contype = 'p') as primary_key
 from mart.sales_monthly;`;
 
 export default {

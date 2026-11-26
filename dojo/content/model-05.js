@@ -1,7 +1,8 @@
 // Bab 5 Data Modeling: load bertahap (watermark, upsert dengan pemeriksaan versi, delete-insert per periode, backfill) yang aman diulang.
 // Setiap latihan dijalankan di transaksi yang dibatalkan, jadi skema dw, etl, dan mart dibuat ulang di setup setiap contoh dan soal.
 
-// Dimensi pelanggan SCD tipe 2, sama persis dengan hasil rujukan bab membangun dimensi.
+// Dimensi pelanggan SCD tipe 2, sama persis dengan hasil rujukan bab membangun dimensi,
+// ditambah unknown member -1 yang disalin persis dari bab membangun tabel fakta (model-04).
 const DIM_CUSTOMER = `create table dw.dim_customer (
   customer_sk integer generated always as identity primary key,
   customer_id integer not null,
@@ -38,7 +39,10 @@ select v.customer_id, v.full_name, v.city_id, ci.city_name, v.segment,
 from versi as v
 join app.cities as ci on ci.city_id = v.city_id
 join app.customers as cu on cu.customer_id = v.customer_id
-order by v.customer_id, v.snapshot_date;`;
+order by v.customer_id, v.snapshot_date;
+insert into dw.dim_customer (customer_sk, customer_id, full_name, city_id, city_name, segment, valid_from, valid_to, is_current)
+overriding system value
+values (-1, -1, 'Pelanggan tidak diketahui', -1, 'Tidak diketahui', 'Tidak diketahui', date '1900-01-01', date '9999-12-31', true);`;
 
 // Tabel fakta pesanan (1 baris = 1 pesanan) dan muatan pertamanya dari app.orders.
 const FACT_TABLE = `create table dw.fact_order (
@@ -86,6 +90,13 @@ update etl.load_watermark
 set last_loaded_at = (select max(source_updated_at) from dw.fact_order)
 where table_name = 'dw.fact_order';`;
 const AFTER_BATCH2 = `${BASE}\n${LOAD_WM}`;
+
+// Khusus soal watermark: dua baris tambahan di batch2 yang membedakan jawaban.
+// 100001 versi shipped adalah salinan basi (updated_at-nya sama dengan shipped_ts, sebelum versi completed yang sudah dimuat);
+// jawaban tanpa syarat watermark menimpanya. 112298 berubah tepat pada watermark awal; jawaban dengan > melewatkannya.
+const WM_EDGE = `insert into raw.orders_batch2 (order_id, customer_id, order_ts, channel, status, shipping_fee, voucher_code, updated_at)
+values (100001, 151, '2024-01-01 14:18:29', 'web', 'shipped', 15000.00, null, '2024-01-01 23:18:29'),
+       (112298, 645, '2025-10-31 23:05:00', 'web', 'processing', 12000.00, null, '2025-10-31 23:20:33');`;
 
 // Mart harian dan pola 2: delete-insert satu bulan.
 const MART_TABLE = `create table mart.orders_daily (
@@ -248,8 +259,8 @@ export default {
       title: "Tabel-tabel di bab ini",
       html: `<p>Tabel fakta isi pesanan (satu baris per produk di dalam pesanan) butuh baris dari <code>app.order_items</code>, padahal batch2 tidak membawa isi pesanan: tidak ada satu pun baris di <code>app.order_items</code> untuk nomor di atas 112007. Karena itu bab ini memakai tabel fakta sendiri dengan grain satu baris per pesanan, <code>dw.fact_order</code>:</p>
 <ul><li><code>order_id</code>: nomor pesanan, kunci utama (degenerate dimension).</li>
-<li><code>customer_sk</code>: surrogate key versi pelanggan yang berlaku pada tanggal pesanan, dicari di <code>dw.dim_customer</code> (SCD tipe 2, sama dengan bab membangun dimensi). Kalau tidak ditemukan, diisi -1.</li>
-<li><code>order_date_key</code>: tanggal pesanan berbentuk YYYYMMDD, sama dengan <code>date_key</code> di dimensi tanggal.</li>
+<li><code>customer_sk</code>: surrogate key versi pelanggan yang berlaku pada tanggal pesanan, dicari di <code>dw.dim_customer</code> (SCD tipe 2, sama dengan bab membangun dimensi). Kalau tidak ditemukan, diisi -1, yaitu unknown member 'Pelanggan tidak diketahui' yang ditambahkan ke dimensi ini di bab membangun tabel fakta. Baris -1 itu juga ada di <code>dw.dim_customer</code> bab ini.</li>
+<li><code>order_date_key</code>: tanggal pesanan berbentuk YYYYMMDD, sama dengan <code>date_key</code> di dimensi tanggal. Kunci ini dihitung langsung dengan <code>to_char(order_ts, 'YYYYMMDD')::integer</code>, tanpa JOIN ke <code>dw.dim_date</code>, karena bentuknya sama dengan <code>date_key</code> dan semua tanggal pesanan di <code>app.orders</code> (1 Januari 2024 sampai 31 Oktober 2025) dan <code>raw.orders_batch2</code> (2 Oktober sampai 7 November 2025) ada di rentang dimensi tanggal, 1 Januari 2024 sampai 31 Desember 2025. Jadi setiap kunci pasti punya pasangan di dimensi tanggal, dan tabel itu tidak perlu dibuat di bab ini.</li>
 <li><code>channel</code>, <code>status</code>, <code>shipping_fee</code>: disalin dari sumber.</li>
 <li><code>source_updated_at</code>: nilai <code>updated_at</code> dari sumber. Kolom ini menunjukkan versi mana yang sedang tersimpan.</li></ul>
 <p>Muatan pertamanya berasal dari <code>app.orders</code>. Tabel <code>etl.load_watermark</code> (skema <code>etl</code> untuk tabel catatan proses muat) menyimpan satu baris per tabel tujuan: <code>table_name</code> dan <code>last_loaded_at</code>. Isinya adalah <code>updated_at</code> terbesar yang sudah masuk, yaitu 31 Oktober 2025 pukul 23:20:33. Semua tabel ini dibuat otomatis sebelum contoh dan soal yang membutuhkannya.</p>`,
@@ -302,7 +313,7 @@ export default {
     },
     {
       title: "Urutan: dimensi dulu, baru fakta",
-      html: `<p>Proses muat fakta mencari <code>customer_sk</code> di dimensi. Kalau fakta dimuat sebelum dimensi diperbarui, pelanggan baru belum punya baris di dimensi. JOIN biasa membuang pesanannya, dan LEFT JOIN dengan COALESCE memberinya kunci -1, kunci yang di bab membangun dimensi dipakai untuk unknown member. Pesanan itu lalu tercatat sebagai milik pelanggan tidak diketahui, sampai dimuat ulang.</p>
+      html: `<p>Proses muat fakta mencari <code>customer_sk</code> di dimensi. Kalau fakta dimuat sebelum dimensi diperbarui, pelanggan baru belum punya baris di dimensi. JOIN biasa membuang pesanannya, dan LEFT JOIN dengan COALESCE memberinya kunci -1, unknown member pelanggan yang dibuat di bab membangun tabel fakta. Pesanan itu lalu tercatat sebagai milik pelanggan tidak diketahui, sampai dimuat ulang.</p>
 <p>Contoh di bawah meniru keadaan terburuk: dimensi pelanggan masih kosong saat batch2 dimuat. Semua 365 baris mendapat -1. Yang 75 bahkan merusak baris lama: kunci pelanggan yang tadinya benar ditimpa -1 oleh upsert. Di pipeline, jadwalkan langkah dimensi sebelum langkah fakta, dan jalankan langkah fakta hanya kalau langkah dimensi berhasil.</p>`,
       examples: [{ setup: BASE, sql: `delete from dw.dim_customer;  -- meniru dimensi yang belum dimuat\n\n${LOAD_WM}\n\nselect count(*) filter (where customer_sk = -1) as pesanan_tanpa_pelanggan\nfrom dw.fact_order;`, note: "Di setup, dimensi sudah terisi dan semua 12.007 pesanan lama punya kunci pelanggan. Setelah dimensi dikosongkan, 365 pesanan mendapat -1." }],
     },
@@ -371,14 +382,14 @@ commit;</code></pre>
     { id: "model-05-08", kind: "sql", level: "menengah", prompt: "Gabungkan semua versi pesanan dari <code>app.orders</code> dan <code>raw.orders_batch2</code> (kolom <code>order_id</code>, <code>order_ts</code>, <code>status</code>, <code>updated_at</code>). Untuk setiap pesanan yang dipesan di Oktober 2025, ambil satu versi dengan <code>updated_at</code> terbesar. Tampilkan jumlah pesanan per <code>status</code>.",
       solution: "with semua_versi as (select order_id, order_ts, status, updated_at from app.orders union all select order_id, order_ts, status, updated_at from raw.orders_batch2), terbaru as (select order_id, status, row_number() over (partition by order_id order by updated_at desc) as urutan from semua_versi where order_ts >= '2025-10-01' and order_ts < '2025-11-01') select status, count(*) as pesanan from terbaru where urutan = 1 group by status",
       why: "UNION ALL menjaga kedua versi setiap koreksi, lalu ROW_NUMBER per order_id yang diurutkan dari updated_at terbesar memilih versi terbaru. Totalnya 630 pesanan Oktober. Inilah sumber untuk backfill Oktober.", hint: "CTE semua_versi dengan UNION ALL, CTE terbaru dengan row_number() over (partition by order_id order by updated_at desc), lalu ambil urutan = 1." },
-    { id: "model-05-09", kind: "build", setup: BASE,
-      prompt: `Tabel <code>dw.fact_order</code> (kunci utama <code>order_id</code>; kolom <code>customer_sk</code>, <code>order_date_key</code>, <code>channel</code>, <code>status</code>, <code>shipping_fee</code>, <code>source_updated_at</code>), <code>dw.dim_customer</code>, dan <code>etl.load_watermark</code> (baris <code>table_name = 'dw.fact_order'</code>) sudah dibuat otomatis dan berisi muatan pertama dari <code>app.orders</code>. Tulis load bertahap dengan watermark:
+    { id: "model-05-09", kind: "build", setup: `${BASE}\n${WM_EDGE}`,
+      prompt: `Tabel <code>dw.fact_order</code> (kunci utama <code>order_id</code>; kolom <code>customer_sk</code>, <code>order_date_key</code>, <code>channel</code>, <code>status</code>, <code>shipping_fee</code>, <code>source_updated_at</code>), <code>dw.dim_customer</code>, dan <code>etl.load_watermark</code> (baris <code>table_name = 'dw.fact_order'</code>) sudah dibuat otomatis dan berisi muatan pertama dari <code>app.orders</code>. Untuk soal ini, <code>raw.orders_batch2</code> mendapat dua baris tambahan: satu salinan basi pesanan lama yang <code>updated_at</code>-nya jauh sebelum watermark, dan satu pesanan baru yang <code>updated_at</code>-nya tepat sama dengan watermark. Tulis load bertahap dengan watermark:
 <ol><li>Ambil baris <code>raw.orders_batch2</code> yang <code>updated_at</code>-nya lebih besar dari atau sama dengan watermark.</li>
 <li>Upsert ke <code>dw.fact_order</code>: <code>customer_sk</code> dari versi <code>dw.dim_customer</code> yang berlaku pada tanggal pesanan (-1 kalau tidak ada), <code>order_date_key</code> berbentuk YYYYMMDD, <code>source_updated_at</code> dari <code>updated_at</code>, dan kolom lain disalin.</li>
 <li>Geser watermark ke <code>source_updated_at</code> terbesar di <code>dw.fact_order</code>.</li></ol>
 Tulis semuanya <b>dua kali</b> berturut-turut. Hasil akhirnya harus sama dengan kalau dijalankan sekali.`,
       solution: `${LOAD_WM}\n\n${LOAD_WM}`, verify: VERIFY_FACT,
-      why: "INSERT … SELECT … ON CONFLICT (order_id) DO UPDATE menambah 290 pesanan dan menimpa 75 koreksi. Watermark bergeser ke 2025-11-08 00:02:00. Di putaran kedua hanya baris pada waktu itu yang terbaca ulang, dan upsert menimpanya dengan nilai yang sama. Pemeriksa membandingkan jumlah pesanan, ongkos kirim, kunci, dan watermark per status.",
+      why: "Syarat watermark membaca 366 dari 367 baris. Salinan basi pesanan 100001 (updated_at 1 Januari 2024) dilewati, sehingga status completed yang sudah dimuat tidak tertimpa shipped; tanpa syarat ini, salinan itu menimpanya. Pesanan 112298 berubah tepat pada watermark (31 Oktober 2025 pukul 23:20:33), jadi ikut terbaca karena syaratnya >=; dengan >, pesanan itu terlewat. INSERT … SELECT … ON CONFLICT (order_id) DO UPDATE menambah 291 pesanan dan menimpa 75 koreksi, sehingga fakta berisi 12.298 pesanan. Watermark bergeser ke 2025-11-08 00:02:00. Di putaran kedua hanya baris pada waktu itu yang terbaca ulang, dan upsert menimpanya dengan nilai yang sama. Pemeriksa membandingkan jumlah pesanan, ongkos kirim, kunci, dan watermark per status.",
       hint: `insert into dw.fact_order (…) select … from raw.orders_batch2 as b ${LOOKUP.replace(/\n\s*/g, " ")} where b.updated_at >= (select last_loaded_at from etl.load_watermark where …) on conflict (order_id) do update set …; lalu update etl.load_watermark set last_loaded_at = (select max(source_updated_at) from dw.fact_order) where …;` },
     { id: "model-05-10", kind: "build", level: "menengah", setup: BATCH3_SETUP,
       prompt: "Tabel <code>dw.fact_order</code> (kolom sama dengan soal sebelumnya) sudah berisi <code>app.orders</code> dan batch2. Tabel <code>raw.orders_batch3</code> (kolom sama dengan <code>raw.orders_batch2</code>, dibuat otomatis untuk soal ini) berisi 44 baris: sebagian pesanan muncul dua kali dengan versi berbeda, sebagian adalah salinan versi lama, dan ada 5 pesanan baru. Dengan satu MERGE ke <code>dw.fact_order</code>: pakai hanya versi dengan <code>updated_at</code> terbesar per <code>order_id</code>; ubah baris yang sudah ada hanya kalau <code>updated_at</code> sumber lebih baru dari <code>source_updated_at</code>; tambahkan pesanan yang belum ada. Cari <code>customer_sk</code> seperti soal sebelumnya. Tulis MERGE-nya <b>dua kali</b> berturut-turut.",

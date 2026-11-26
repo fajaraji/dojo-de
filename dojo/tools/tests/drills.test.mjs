@@ -70,3 +70,9 @@ test("parseNumber memahami format Indonesia dan Inggris", () => {
   assert.equal(parseNumber("Rp 2.500"), 2500);
   assert.ok(Number.isNaN(parseNumber("dua")));
 });
+
+test("parseNumber menerima tanda minus Unicode (−) seperti di teks bab", () => {
+  assert.equal(parseNumber("−9.931.300"), -9931300);
+  assert.equal(parseNumber("-9.931.300"), -9931300);
+  assert.equal(parseNumber("−1,5"), -1.5);
+});

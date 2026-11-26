@@ -112,3 +112,5 @@ dl.terms dd{margin:0}
 .callout.exam{border-left:4px solid var(--warn)}
 .clock{font-family:var(--f-mono);font-size:22px;font-weight:700;min-width:7ch;font-variant-numeric:tabular-nums}
 .clock.over{color:var(--bad)}
+.rail .tt{min-width:0}
+.rail .pt{display:block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:2px}

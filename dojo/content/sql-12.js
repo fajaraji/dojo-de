@@ -208,6 +208,7 @@ rollback;                                -- batalkan semuanya</code></pre>
     },
   ],
   tsql: [
+    { pg: "category_name text unique (beberapa baris boleh NULL)", tsql: "category_name nvarchar(100) unique (hanya satu NULL)", note: "Dokumentasi SQL Server menyatakan constraint UNIQUE mengizinkan NULL, tetapi hanya satu NULL per kolom. Di PostgreSQL, NULL tidak dianggap kembar, jadi banyak baris boleh sama-sama NULL. Kalau ingin PostgreSQL menolak NULL kedua, tulis <code>unique nulls not distinct</code>." },
     { pg: "id integer generated always as identity", tsql: "id int identity(1,1)", note: "Keduanya membuat nomor urut otomatis. Di PostgreSQL, ALWAYS menolak nilai yang diisi sendiri kecuali dengan OVERRIDING SYSTEM VALUE; di SQL Server, mengisi nilai sendiri butuh SET IDENTITY_INSERT ON. IDENTITY di SQL Server tidak menjamin nilainya unik atau tanpa lompatan; pasang PRIMARY KEY atau UNIQUE. PostgreSQL juga punya tipe <code>serial</code>, cara khas PostgreSQL untuk hal yang sama; identity adalah cara standar SQL." },
     { pg: "insert … returning *", tsql: "insert … output inserted.* values …", note: "OUTPUT ditulis sebelum VALUES (di UPDATE sebelum WHERE). Awalan <code>inserted.</code> berisi nilai baru dan <code>deleted.</code> berisi nilai lama, mirip <code>new.</code> dan <code>old.</code> di PostgreSQL 18." },
     { pg: "delete … returning *", tsql: "delete from t output deleted.* where …", note: "" },

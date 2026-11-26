@@ -5,7 +5,8 @@ const lastTable = (r) => [...(r.results || [])].reverse().find(x => x.columns &&
 
 /** Mengubah teks angka (format Indonesia atau Inggris) menjadi Number. NaN kalau bukan angka. */
 export function parseNumber(text) {
-  let s = String(text || "").replace(/rp/i, "").replace(/\s/g, "");
+  // tanda minus Unicode (−, U+2212) dan tanda pisah (–) dianggap minus biasa
+  let s = String(text || "").replace(/rp/i, "").replace(/\s/g, "").replace(/^[−–]/, "-");
   if (!s || !/^-?[\d.,]+$/.test(s)) return NaN;
   const hasDot = s.includes("."), hasComma = s.includes(",");
   if (hasDot && hasComma) {

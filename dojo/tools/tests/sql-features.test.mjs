@@ -48,3 +48,10 @@ test("semua fitur yang terdeteksi ada di daftar fitur yang dikenal", () => {
   const f = sqlFeatures("with x as (select 1) select row_number() over (partition by a order by b) from x union all select 2");
   for (const k of f) assert.ok(KNOWN_FEATURES.has(k), k);
 });
+
+test("nomor posisi kolom di GROUP BY / ORDER BY terdeteksi", () => {
+  assert.ok(sqlFeatures("select status, count(*) from app.orders group by 1").has("POSISI KOLOM"));
+  assert.ok(sqlFeatures("select a, b from t order by 2 desc").has("POSISI KOLOM"));
+  assert.ok(!sqlFeatures("select a from t order by a limit 1").has("POSISI KOLOM"));
+  assert.ok(!sqlFeatures("select a from t where x = 'group by 1'").has("POSISI KOLOM"));
+});

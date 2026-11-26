@@ -18,7 +18,7 @@ export default {
     { term: "fungsi agregasi", def: "Fungsi yang menerima banyak baris dan mengembalikan satu nilai: <code>COUNT</code>, <code>SUM</code>, <code>AVG</code>, <code>MIN</code>, <code>MAX</code>." },
     { term: "kelompok", def: "Kumpulan baris yang nilainya sama di kolom-kolom yang ditulis di GROUP BY. Fungsi agregasi dihitung sekali untuk setiap kelompok." },
   ],
-  introduces: ["COUNT()", "COUNT(DISTINCT)", "SUM()", "AVG()", "MIN()", "MAX()", "GROUP BY", "HAVING", "FILTER"],
+  introduces: ["COUNT()", "COUNT(DISTINCT)", "SUM()", "AVG()", "MIN()", "MAX()", "GROUP BY", "HAVING", "FILTER", "POSISI KOLOM"],
   sections: [
     {
       title: "Agregasi: meringkas banyak baris",
@@ -35,7 +35,7 @@ export default {
       title: "COUNT(*), COUNT(kolom), dan NULL",
       html: `<p><code>COUNT(*)</code> menghitung jumlah baris, apa pun isinya. <code>COUNT(kolom)</code> hanya menghitung baris yang kolom itu <b>tidak</b> NULL. Perbedaan kecil ini sering menjadi sumber angka yang salah.</p>
 <p>Di <code>app.orders</code>, kolom <code>voucher_code</code> berisi NULL kalau pesanan tidak memakai voucher, dan kolom <code>handled_by</code> (nomor agen layanan pelanggan yang menangani pesanan) berisi NULL kalau pelanggan tidak menghubungi layanan pelanggan. Jadi <code>COUNT(voucher_code)</code> menjawab "berapa pesanan memakai voucher", bukan "berapa pesanan". Kalau yang ditanya jumlah baris, pakai <code>COUNT(*)</code>.</p>
-<p>Aturan ini berlaku untuk semua fungsi agregasi bawaan: nilai NULL dilewati. SUM, AVG, MIN, dan MAX hanya melihat nilai yang terisi.</p>`,
+<p>Aturan ini berlaku untuk COUNT(kolom), SUM, AVG, MIN, dan MAX: nilai NULL dilewati. SUM, AVG, MIN, dan MAX hanya melihat nilai yang terisi.</p>`,
       examples: [{ sql: "select count(*) as semua_pesanan,\n       count(voucher_code) as pakai_voucher,\n       count(handled_by) as ditangani_agen\nfrom app.orders;", note: "Ada 12.007 pesanan. Sebanyak 2.040 memakai voucher dan 1.418 ditangani agen. Pesanan tanpa voucher = 12.007 − 2.040 = 9.967." }],
     },
     {
@@ -88,6 +88,17 @@ or be used in an aggregate function</code></pre>
 <p>Kebalikannya boleh: kolom di GROUP BY tidak wajib tampil di SELECT.</p>`,
     },
     {
+      title: "Nomor posisi kolom di GROUP BY dan ORDER BY",
+      html: `<p>Di PostgreSQL, GROUP BY dan ORDER BY boleh berisi angka, bukan nama kolom. Angka itu berarti <b>posisi kolom</b> di SELECT, dihitung dari kiri: 1 = kolom pertama, 2 = kolom kedua, dan seterusnya. Jadi <code>group by 1</code> berarti "kelompokkan menurut kolom pertama di SELECT".</p>
+<p>Kelebihannya: query lebih pendek, terutama kalau kolomnya berupa ekspresi panjang seperti <code>date_trunc('month', order_ts)::date</code>. Ekspresi itu cukup ditulis sekali di SELECT.</p>
+<p>Risikonya: angka itu mengikuti urutan kolom di SELECT. Kalau urutan kolom diubah atau ada kolom baru yang disisipkan, angkanya menunjuk kolom lain. Kadang PostgreSQL menolaknya, misalnya kalau kolom pertama berubah menjadi <code>count(*)</code>, <code>group by 1</code> gagal dengan pesan <code>aggregate functions are not allowed in GROUP BY</code>. Di ORDER BY tidak ada error: hasilnya diurutkan menurut kolom lain tanpa peringatan. Angka yang melebihi jumlah kolom ditolak dengan pesan <code>GROUP BY position 3 is not in select list</code>.</p>
+<p>Menulis ekspresi yang sama di SELECT dan GROUP BY, seperti dianjurkan di bagian GROUP BY, dan menulis nomor posisi sama-sama sah di PostgreSQL. Bab-bab berikutnya kadang memakai bentuk pendek ini. Untuk query yang akan dipakai lama atau dibaca orang lain, nama kolom atau ekspresi lengkap lebih mudah dipahami dan tetap benar walaupun urutan SELECT berubah.</p>`,
+      examples: [
+        { sql: "select date_trunc('month', order_ts)::date as bulan,\n       count(*) as jumlah_pesanan\nfrom app.orders\nwhere order_ts >= '2025-01-01'\ngroup by 1\norder by 1;", note: "group by 1 dan order by 1 menunjuk kolom pertama, yaitu bulan. Hasilnya sama dengan contoh ringkasan per bulan di bagian GROUP BY: sepuluh baris, Januari sampai Oktober 2025." },
+        { sql: "select status, count(*) as jumlah_pesanan\nfrom app.orders\ngroup by 1\norder by 2 desc;", note: "order by 2 desc mengurutkan menurut kolom kedua, jumlah_pesanan, dari yang terbesar. Hasilnya sama dengan contoh pertama di bagian GROUP BY: completed (10.879) di urutan teratas." },
+      ],
+    },
+    {
       title: "WHERE dan HAVING: urutan proses",
       html: `<p><code>HAVING</code> menyaring <b>kelompok</b> berdasarkan hasil agregasi, misalnya "hanya pelanggan dengan minimal 10 pesanan". Untuk memahami bedanya dengan WHERE, lihat urutan PostgreSQL memproses query. Urutan ini berbeda dengan urutan menulisnya:</p>
 <ol><li><code>FROM</code>: ambil baris dari tabel.</li>
@@ -132,6 +143,7 @@ or be used in an aggregate function</code></pre>
     { pg: "count(*) filter (where status = 'cancelled')", tsql: "sum(case when status = 'cancelled' then 1 else 0 end), atau count(case when status = 'cancelled' then 1 end)", note: "SQL Server tidak punya FILTER. Bentuk COUNT(CASE …) bekerja karena CASE tanpa ELSE menghasilkan NULL, dan COUNT melewati NULL." },
     { pg: "sum(amount) filter (where status = 'success')", tsql: "sum(case when status = 'success' then amount end)", note: "Sama seperti FILTER: baris yang tidak memenuhi syarat menjadi NULL dan dilewati SUM." },
     { pg: "group by bulan (alias dari SELECT)", tsql: "group by ekspresi lengkapnya", note: "PostgreSQL membolehkan alias SELECT di GROUP BY; SQL Server tidak. Menulis ekspresi lengkap di GROUP BY berlaku di keduanya." },
+    { pg: "group by 1, 2 dan order by 1, 2 (nomor posisi kolom)", tsql: "group by ekspresi lengkapnya; order by 1, 2 boleh", note: "Dokumentasi GROUP BY SQL Server hanya menyebut kolom atau perhitungan dari kolom sebagai isi GROUP BY; nomor posisi kolom tidak disebut. Jadi di SQL Server tulis ekspresi lengkap di GROUP BY. ORDER BY menerima nomor posisi kolom, tetapi dokumentasinya menyarankan untuk menghindarinya karena sulit dibaca dan hasilnya bisa salah kalau urutan kolom di SELECT berubah." },
     { pg: "ERROR 42803: column … must appear in the GROUP BY clause …", tsql: "Msg 8120: Column … is invalid in the select list because it is not contained in either an aggregate function or the GROUP BY clause.", note: "Aturannya sama: kolom di SELECT harus ada di GROUP BY atau di dalam fungsi agregasi." },
     { pg: "group by voucher_code (NULL jadi satu kelompok)", tsql: "group by voucher_code", note: "Sama: SQL Server juga mengumpulkan semua NULL menjadi satu kelompok. WHERE dan HAVING juga bekerja sama." },
   ],
