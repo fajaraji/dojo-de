@@ -42,6 +42,10 @@ const CODES = {
   "23505": ["Nilai kunci dobel", "Baris yang dimasukkan memakai nilai kunci yang sudah ada. Kolom kunci utama dan kolom UNIQUE tidak boleh berisi nilai yang sama dua kali."],
   "23503": ["Melanggar hubungan antartabel", "Baris ini merujuk ke baris yang tidak ada di tabel lain, atau baris yang mau dihapus masih dirujuk tabel lain."],
   "23502": ["Kolom wajib diisi", "Kolom yang tidak boleh kosong (NOT NULL) diisi NULL."],
+  "42P20": ["Window function tidak boleh di sini", "Window function (fungsi dengan OVER) dihitung sesudah WHERE, GROUP BY, dan HAVING, jadi tidak bisa dipakai di bagian itu. Hitung dulu window function-nya di subquery atau CTE, lalu saring hasilnya di query luar dengan WHERE."],
+  "42P07": ["Tabel sudah ada", "Tabel atau objek dengan nama itu sudah ada, jadi tidak bisa dibuat lagi. Pakai nama lain, hapus dulu dengan DROP, atau tulis CREATE TABLE IF NOT EXISTS kalau memang boleh dilewati."],
+  "23514": ["Data melanggar aturan CHECK", "Nilai yang dimasukkan tidak memenuhi aturan CHECK di tabel itu (misalnya harga harus lebih dari 0). Nama aturannya ada di pesan asli."],
+  "42804": ["Tipe data tidak cocok", "Dua nilai yang harus bertipe sama ternyata tipenya berbeda, misalnya angka dan teks di kolom yang sama pada UNION, atau di hasil THEN dan ELSE pada CASE. Samakan tipenya dengan CAST atau ::."],
   "25P02": ["Transaksi sudah gagal", "Perintah sebelumnya di transaksi ini gagal, jadi perintah berikutnya ditolak sampai transaksi dibatalkan dengan ROLLBACK."],
 };
 
@@ -54,6 +58,13 @@ export function explainPgError(error, sql) {
     judul = "Operator tidak cocok dengan tipe datanya";
     dasar = "Operator itu tidak bisa dipakai untuk tipe data kedua nilai yang ada di kiri dan kanannya.";
     if (/(text|character varying)\s*\+|\+\s*(text|character varying)/i.test(message)) saran.push("Untuk menggabung teks di PostgreSQL pakai ||, misalnya full_name || ' - ' || email. Tanda + hanya untuk angka.");
+  }
+  if (code === "42803" && /not allowed in WHERE/i.test(message)) {
+    judul = "Fungsi agregasi tidak boleh di WHERE";
+    dasar = "WHERE menyaring baris satu per satu sebelum baris dikelompokkan, jadi hasil COUNT, SUM, dan fungsi agregasi lain belum ada. Pindahkan syarat yang memakai fungsi agregasi ke HAVING, yang ditulis setelah GROUP BY.";
+  } else if (code === "42803" && /cannot be nested/i.test(message)) {
+    judul = "Fungsi agregasi bertumpuk";
+    dasar = "Fungsi agregasi tidak boleh ditulis di dalam fungsi agregasi lain, misalnya AVG(COUNT(*)). Hitung yang di dalam dulu per kelompok di subquery atau CTE, lalu hitung yang di luar dari hasil itu.";
   }
   if (code === "42703" && /"[^"]+"/.test(strip(sql))) {
     dasar += " Perhatikan juga: di PostgreSQL, tanda kutip ganda menandai nama kolom atau tabel, bukan teks. Teks ditulis dengan kutip tunggal, misalnya 'Jawa'.";

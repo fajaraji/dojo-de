@@ -36,3 +36,22 @@ test("kode yang tidak dikenal tetap memberi judul dan isi", () => {
   const r = explainPgError({ code: "XX999", message: "sesuatu" }, "");
   assert.ok(r.judul && r.isi);
 });
+
+// error yang sering muncul di bab 5–12
+test("42P20: window function di WHERE dijelaskan dengan subquery atau CTE", () => {
+  const r = explainPgError({ code: "42P20", message: "window functions are not allowed in WHERE" }, "");
+  assert.match(r.judul, /window function/i);
+  assert.match(r.isi, /subquery|CTE/);
+});
+test("42803 untuk agregasi di WHERE menyarankan HAVING, bukan GROUP BY", () => {
+  const r = explainPgError({ code: "42803", message: "aggregate functions are not allowed in WHERE" }, "");
+  assert.match(r.isi, /HAVING/);
+  assert.doesNotMatch(r.judul, /harus ada di GROUP BY/);
+});
+test("42803 untuk agregasi bertumpuk dijelaskan", () => {
+  const r = explainPgError({ code: "42803", message: "aggregate function calls cannot be nested" }, "");
+  assert.match(r.isi, /bertumpuk|di dalam/);
+});
+test("42P07 tabel sudah ada", () => assert.match(explainPgError({ code: "42P07", message: 'relation "x" already exists' }, "").isi, /sudah ada/));
+test("23514 CHECK dilanggar", () => assert.match(explainPgError({ code: "23514", message: 'new row for relation "x" violates check constraint "c"' }, "").isi, /CHECK/));
+test("42804 tipe data tidak cocok", () => assert.match(explainPgError({ code: "42804", message: "UNION types integer and text cannot be matched" }, "").isi, /tipe/));
