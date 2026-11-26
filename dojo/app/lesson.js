@@ -13,7 +13,8 @@ function drillHtml(d, n, state, exam) {
   const done = state.progress[d.id];
   const tries = state.tries[d.id] || 0;
   // di bab ujian, petunjuk baru aktif setelah 2 kali cek (seperti tombol solusi)
-  const hintBtn = exam
+  // soal "explain" tidak punya tombol cek, jadi petunjuknya tidak dikunci
+  const hintBtn = exam && d.kind !== "explain"
     ? `<button data-act="hint" data-id="${d.id}" ${done || tries >= 2 ? "" : "disabled"} title="Aktif setelah 2 kali cek">Petunjuk</button>`
     : `<button data-act="hint" data-id="${d.id}">Petunjuk</button>`;
   const head = `<div class="dh"><span class="tag">${n}. ${KIND[d.kind] || d.kind}</span>${d.level === "wawancara" ? '<span class="tag hot">Level wawancara</span>' : ""}${done ? '<span class="tag ok">Selesai</span>' : ""}</div>
